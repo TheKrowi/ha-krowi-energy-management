@@ -1,0 +1,99 @@
+{
+  "config": {
+    "step": {
+      "menu": {
+        "title": "Krowi Energy Management",
+        "description": "Select the energy domain to configure.",
+        "menu_options": {
+          "electricity": "Electricity",
+          "gas": "Gas"
+        }
+      },
+      "electricity": {
+        "title": "Electricity Configuration",
+        "data": {
+          "unit": "Unit",
+          "current_price_entity": "Current price entity",
+          "fx_rate_entity": "FX rate entity (optional)",
+          "export_template": "Export price template (Jinja2)"
+        },
+        "data_description": {
+          "current_price_entity": "Entity ID of your electricity spot price source (e.g. Nord Pool current price sensor).",
+          "fx_rate_entity": "Entity ID of an exchange rate sensor. Leave empty if your price source is already in the correct currency.",
+          "export_template": "Jinja2 template that evaluates to the current export price. All referenced entities are tracked automatically."
+        }
+      },
+      "gas": {
+        "title": "Gas Configuration",
+        "data": {
+          "unit": "Unit",
+          "current_price_entity": "Current price entity"
+        },
+        "data_description": {
+          "current_price_entity": "Entity ID of your gas price source (e.g. TTF DAM 30-day average sensor)."
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This energy domain is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "electricity_options": {
+        "title": "Electricity Options",
+        "data": {
+          "unit": "Unit",
+          "current_price_entity": "Current price entity",
+          "fx_rate_entity": "FX rate entity (optional)",
+          "export_template": "Export price template (Jinja2)"
+        },
+        "data_description": {
+          "unit": "Changing the unit does not rescale existing tariff values.",
+          "current_price_entity": "Entity ID of your electricity spot price source.",
+          "fx_rate_entity": "Entity ID of an exchange rate sensor. Leave empty for no FX conversion.",
+          "export_template": "Jinja2 template that evaluates to the current export price."
+        }
+      },
+      "gas_options": {
+        "title": "Gas Options",
+        "data": {
+          "unit": "Unit",
+          "current_price_entity": "Current price entity"
+        },
+        "data_description": {
+          "unit": "Changing the unit does not rescale existing tariff values.",
+          "current_price_entity": "Entity ID of your gas price source."
+        }
+      }
+    }
+  },
+  "issues": {
+    "entity_renamed": {
+      "title": "Krowi Energy Management: entity renamed",
+      "description": "One or more entities in the **{domain_type}** entry have been renamed. Sensors may be tracking a stale entity ID until the next restart or reload.\n\nRestart Home Assistant or reload the integration to restore correct tracking."
+    }
+  },
+  "entity": {
+    "number": {
+      "electricity_green_energy_contribution_rate": {"name": "Groene stroom bijdrage"},
+      "electricity_distribution_transport_rate": {"name": "Distributie & transport"},
+      "electricity_excise_duty_rate": {"name": "Bijzondere accijns"},
+      "electricity_energy_contribution_rate": {"name": "Energiebijdrage"},
+      "electricity_vat_rate": {"name": "BTW elektriciteit"},
+      "gas_distribution_rate": {"name": "Gas distributie"},
+      "gas_transport_rate": {"name": "Gas transport (Fluxys)"},
+      "gas_excise_duty_rate": {"name": "Gas bijzondere accijns"},
+      "gas_energy_contribution_rate": {"name": "Gas energiebijdrage"},
+      "gas_vat_rate": {"name": "Gas BTW"}
+    },
+    "sensor": {
+      "electricity_surcharge_rate": {"name": "Electricity surcharge rate"},
+      "electricity_surcharge_formula": {"name": "Electricity surcharge formula"},
+      "electricity_price_import": {"name": "Electricity import price"},
+      "electricity_price_export": {"name": "Electricity export price"},
+      "gas_surcharge_rate": {"name": "Gas surcharge rate"},
+      "gas_price": {"name": "Gas price"}
+    }
+  }
+}

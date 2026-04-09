@@ -1,0 +1,160 @@
+"""Config flow for Krowi Energy Management."""
+from __future__ import annotations
+
+import voluptuous as vol
+from homeassistant import config_entries
+from homeassistant.components import repairs as ir
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP
+from homeassistant.core import callback
+from homeassistant.helpers import entity_registry as er
+
+from .const import (
+    CONF_CURRENT_PRICE_ENTITY,
+    CONF_DOMAIN_TYPE,
+    CONF_EXPORT_TEMPLATE,
+    CONF_FX_RATE_ENTITY,
+    CONF_UNIT,
+    DEFAULT_ELECTRICITY_PRICE_ENTITY,
+    DEFAULT_GAS_PRICE_ENTITY,
+    DOMAIN,
+    DOMAIN_TYPE_ELECTRICITY,
+    DOMAIN_TYPE_GAS,
+    UNIT_OPTIONS,
+)
+
+
+def _electricity_schema(defaults: dict | None = None) -> vol.Schema:
+    d = defaults or {}
+    return vol.Schema(
+        {
+            vol.Required(CONF_UNIT, default=d.get(CONF_UNIT, UNIT_OPTIONS[1])): vol.In(UNIT_OPTIONS),
+            vol.Required(
+                CONF_CURRENT_PRICE_ENTITY,
+                default=d.get(CONF_CURRENT_PRICE_ENTITY, DEFAULT_ELECTRICITY_PRICE_ENTITY),
+            ): str,
+            vol.Optional(CONF_FX_RATE_ENTITY, default=d.get(CONF_FX_RATE_ENTITY, "")): str,
+            vol.Required(
+                CONF_EXPORT_TEMPLATE,
+                default=d.get(
+                    CONF_EXPORT_TEMPLATE,
+                    "{{ (states('sensor.nord_pool_be_average_price') | float(0) * 0.94 - 0.017) | round(5) }}",
+                ),
+            ): str,
+        }
+    )
+
+
+def _gas_schema(defaults: dict | None = None) -> vol.Schema:
+    d = defaults or {}
+    return vol.Schema(
+        {
+            vol.Required(CONF_UNIT, default=d.get(CONF_UNIT, UNIT_OPTIONS[2])): vol.In(UNIT_OPTIONS),
+            vol.Required(
+                CONF_CURRENT_PRICE_ENTITY,
+                default=d.get(CONF_CURRENT_PRICE_ENTITY, DEFAULT_GAS_PRICE_ENTITY),
+            ): str,
+        }
+    )
+
+
+class KrowiEnergyManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Config flow for Krowi Energy Management."""
+
+    VERSION = 1
+
+    async def async_step_user(self, user_input=None):
+        """Delegate to menu step."""
+        return await self.async_step_menu()
+
+    async def async_step_menu(self, user_input=None):
+        """Show domain picker menu."""
+        return self.async_show_menu(
+            step_id="menu",
+            menu_options=[DOMAIN_TYPE_ELECTRICITY, DOMAIN_TYPE_GAS],
+        )
+
+    async def async_step_electricity(self, user_input=None):
+        """Handle electricity domain setup."""
+        # Duplicate check
+        for entry in self._async_current_entries():
+            if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_ELECTRICITY:
+                return self.async_abort(reason="already_configured")
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id=DOMAIN_TYPE_ELECTRICITY,
+                data_schema=_electricity_schema(),
+            )
+
+        return self.async_create_entry(
+            title="Electricity",
+            data={
+                CONF_DOMAIN_TYPE: DOMAIN_TYPE_ELECTRICITY,
+                **user_input,
+            },
+        )
+
+    async def async_step_gas(self, user_input=None):
+        """Handle gas domain setup."""
+        # Duplicate check
+        for entry in self._async_current_entries():
+            if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_GAS:
+                return self.async_abort(reason="already_configured")
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id=DOMAIN_TYPE_GAS,
+                data_schema=_gas_schema(),
+            )
+
+        return self.async_create_entry(
+            title="Gas",
+            data={
+                CONF_DOMAIN_TYPE: DOMAIN_TYPE_GAS,
+                **user_input,
+            },
+        )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        """Return the options flow."""
+        return KrowiEnergyManagementOptionsFlow(config_entry)
+
+
+class KrowiEnergyManagementOptionsFlow(config_entries.OptionsFlow):
+    """Options flow for Krowi Energy Management."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        self._entry = config_entry
+
+    async def async_step_init(self, user_input=None):
+        """Route to domain-specific options step."""
+        domain_type = self._entry.data.get(CONF_DOMAIN_TYPE)
+        if domain_type == DOMAIN_TYPE_ELECTRICITY:
+            return await self.async_step_electricity_options(user_input)
+        return await self.async_step_gas_options(user_input)
+
+    async def async_step_electricity_options(self, user_input=None):
+        """Electricity options — pre-populated with current values."""
+        current = {**self._entry.data, **self._entry.options}
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id="electricity_options",
+                data_schema=_electricity_schema(current),
+            )
+
+        return self.async_create_entry(title="", data=user_input)
+
+    async def async_step_gas_options(self, user_input=None):
+        """Gas options — pre-populated with current values."""
+        current = {**self._entry.data, **self._entry.options}
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id="gas_options",
+                data_schema=_gas_schema(current),
+            )
+
+        return self.async_create_entry(title="", data=user_input)

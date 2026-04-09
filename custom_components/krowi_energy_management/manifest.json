@@ -1,0 +1,10 @@
+{
+  "domain": "krowi_energy_management",
+  "name": "Krowi Energy Management",
+  "version": "1.0.0",
+  "config_flow": true,
+  "documentation": "https://github.com/TheKrowi/ha-krowi-energy-management",
+  "issue_tracker": "https://github.com/TheKrowi/ha-krowi-energy-management/issues",
+  "codeowners": ["@TheKrowi"],
+  "iot_class": "calculated"
+}
