@@ -584,8 +584,8 @@ class GasSurchargeSensor(KrowiSensor):
     def _rate_entity_ids(self) -> list[str]:
         return [
             eid for uid in [
-                UID_GAS_DISTRIBUTION,
                 UID_GAS_TRANSPORT,
+                UID_GAS_DISTRIBUTION,
                 UID_GAS_EXCISE_DUTY,
                 UID_GAS_ENERGY_CONTRIBUTION,
             ]
@@ -604,8 +604,8 @@ class GasSurchargeSensor(KrowiSensor):
     def _update(self) -> None:
         total = 0.0
         for uid in [
-            UID_GAS_DISTRIBUTION,
             UID_GAS_TRANSPORT,
+            UID_GAS_DISTRIBUTION,
             UID_GAS_EXCISE_DUTY,
             UID_GAS_ENERGY_CONTRIBUTION,
         ]:
@@ -641,8 +641,8 @@ class GasSurchargeFormulaSensor(KrowiSensor):
     def _rate_entity_ids(self) -> list[str]:
         return [
             eid for uid in [
-                UID_GAS_DISTRIBUTION,
                 UID_GAS_TRANSPORT,
+                UID_GAS_DISTRIBUTION,
                 UID_GAS_EXCISE_DUTY,
                 UID_GAS_ENERGY_CONTRIBUTION,
             ]
@@ -661,8 +661,8 @@ class GasSurchargeFormulaSensor(KrowiSensor):
     def _update(self) -> None:
         values = []
         for uid in [
-            UID_GAS_DISTRIBUTION,
             UID_GAS_TRANSPORT,
+            UID_GAS_DISTRIBUTION,
             UID_GAS_EXCISE_DUTY,
             UID_GAS_ENERGY_CONTRIBUTION,
         ]:
