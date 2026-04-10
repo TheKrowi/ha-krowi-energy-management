@@ -1,20 +1,33 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  ## Project: Krowi Energy Management
+  HACS-compatible Home Assistant custom component. Domain: `krowi_energy_management`.
+  Extensible to electricity, gas, water, and advanced energy management.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  ## Tech stack
+  - Python, Home Assistant core APIs
+  - Platforms: `number`, `sensor`
+  - Config entries: one per energy domain (`electricity`, `gas`)
+
+  ## Architecture principles
+  - **No coordinator** — entities are reactive, not polled. Use `async_track_state_change_event`.
+  - **Two config entries max** — one per domain, enforced by duplicate check in config flow.
+  - **Options override data** — all setup functions must read mutable fields via
+    `effective = {**entry.data, **entry.options}`. `domain_type` is the only immutable field
+    and may be read directly from `entry.data`.
+  - **RestoreNumber** — all `NumberEntity` subclasses use `RestoreNumber` to persist values
+    across restarts without a database coordinator.
+  - **EntitySelector() with no domain filter** — entity ID fields in config/options flow
+    use `selector.EntitySelector()` (no `EntitySelectorConfig`), allowing any domain.
+  - **Optional entity fields clear to None** — `vol.Optional` fields backed by
+    `EntitySelector()` return `None` when cleared. Downstream code must guard with `or ""`.
+
+  ## Versioning
+  - Currently in beta: `manifest.json` version follows `0.0.x`.
+  - No GitHub Releases or tags exist yet. HACS falls back to commit SHAs until tags are created.
+  - When cutting the first official release: bump `manifest.json` version, commit, then create
+    a GitHub Release with a matching tag (e.g. `v1.0.0`) and release notes.
+
+  ## Commit style
+  Conventional commits: `fix:`, `feat:`, `chore:`, `refactor:`, `docs:`.
