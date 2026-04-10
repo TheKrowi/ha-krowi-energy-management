@@ -41,17 +41,17 @@ The following unique IDs SHALL be used for all entities. No other UID values are
 | `electricity_tariff_distribution_transport` | Distribution & transport | Distributie & transport |
 | `electricity_tariff_excise_duty` | Excise duty | Bijzondere accijns |
 | `electricity_tariff_energy_contribution` | Energy contribution | Energiebijdrage |
-| `electricity_vat` | VAT | BTW elektriciteit |
+| `electricity_vat` | VAT | BTW |
 
 **Gas number entities:**
 
 | Unique ID | Friendly name (EN) | Friendly name (NL) |
 |-----------|-------------------|-------------------|
-| `gas_tariff_distribution` | Distribution | Gas distributie |
-| `gas_tariff_transport` | Transport (Fluxys) | Gas transport (Fluxys) |
-| `gas_tariff_excise_duty` | Excise duty | Gas bijzondere accijns |
-| `gas_tariff_energy_contribution` | Energy contribution | Gas energiebijdrage |
-| `gas_vat` | VAT | Gas BTW |
+| `gas_tariff_distribution` | Distribution | Distributie |
+| `gas_tariff_transport` | Transport (Fluxys) | Transport (Fluxys) |
+| `gas_tariff_excise_duty` | Excise duty | Bijzondere accijns |
+| `gas_tariff_energy_contribution` | Energy contribution | Energiebijdrage |
+| `gas_vat` | VAT | BTW |
 
 **Electricity sensor entities:**
 
@@ -69,8 +69,10 @@ The following unique IDs SHALL be used for all entities. No other UID values are
 | Unique ID | Friendly name (EN) | Friendly name (NL) |
 |-----------|-------------------|-------------------|
 | `gas_tariff_total_surcharge` | Total surcharge | Totale toeslag |
+| `gas_tariff_total_surcharge_formula` | Total surcharge formula | Totale toeslag formule |
 | `gas_current_price` | Current price | Actuele prijs |
+| `gas_current_price_eur` | Current price (EUR/kWh) | Actuele prijs (EUR/kWh) |
 
 #### Scenario: All entities registered with correct UIDs
 - **WHEN** the integration is loaded with both electricity and gas entries
-- **THEN** all 18 entities SHALL be present in the HA entity registry with exactly the UIDs listed in the table above
+- **THEN** all 20 entities SHALL be present in the HA entity registry with exactly the UIDs listed in the table above

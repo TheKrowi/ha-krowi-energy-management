@@ -44,6 +44,8 @@ from .const import (
     UID_GAS_ENERGY_CONTRIBUTION,
     UID_GAS_EXCISE_DUTY,
     UID_GAS_PRICE,
+    UID_GAS_PRICE_EUR,
+    UID_GAS_SURCHARGE_FORMULA,
     UID_GAS_SURCHARGE_RATE,
     UID_GAS_TRANSPORT,
     UID_GAS_VAT,
@@ -101,7 +103,9 @@ async def async_setup_entry(
 
         entities = [
             GasSurchargeSensor(hass, entry_id, unit, device_info, language),
+            GasSurchargeFormulaSensor(hass, entry_id, unit, device_info, language),
             GasCurrentPriceSensor(hass, entry_id, unit, current_price_entity, device_info, language),
+            GasCurrentPriceEurSensor(hass, entry_id, unit, device_info, language),
         ]
 
     async_add_entities(entities)
@@ -551,6 +555,66 @@ class GasSurchargeSensor(KrowiSensor):
 
 
 # ---------------------------------------------------------------------------
+# Gas surcharge formula sensor
+# ---------------------------------------------------------------------------
+
+class GasSurchargeFormulaSensor(KrowiSensor):
+    """Human-readable formula string for the gas surcharge."""
+
+    _attr_native_unit_of_measurement = None
+    _attr_state_class = None
+
+    def __init__(self, hass, entry_id, unit, device_info, language=LANG_EN):
+        super().__init__(hass, entry_id, device_info)
+        self._attr_unique_id = UID_GAS_SURCHARGE_FORMULA
+        self.entity_id = f"sensor.{UID_GAS_SURCHARGE_FORMULA}"
+        self._attr_name = NAMES.get((UID_GAS_SURCHARGE_FORMULA, language), NAMES[(UID_GAS_SURCHARGE_FORMULA, LANG_EN)])
+        self._unit = unit
+        self._attr_native_value = f"0.00000 + 0.00000 + 0.00000 + 0.00000 = 0.00000 {unit}"
+
+    def _rate_entity_ids(self) -> list[str]:
+        return [
+            eid for uid in [
+                UID_GAS_DISTRIBUTION,
+                UID_GAS_TRANSPORT,
+                UID_GAS_EXCISE_DUTY,
+                UID_GAS_ENERGY_CONTRIBUTION,
+            ]
+            if (eid := _resolve_entity_id(self.hass, "number", uid)) is not None
+        ]
+
+    def _subscribe_listeners(self) -> None:
+        ids = self._rate_entity_ids()
+        if ids:
+            self._track(ids, self._handle_state_change)
+
+    @callback
+    def _handle_state_change(self, event) -> None:
+        self._update()
+
+    def _update(self) -> None:
+        values = []
+        for uid in [
+            UID_GAS_DISTRIBUTION,
+            UID_GAS_TRANSPORT,
+            UID_GAS_EXCISE_DUTY,
+            UID_GAS_ENERGY_CONTRIBUTION,
+        ]:
+            eid = _resolve_entity_id(self.hass, "number", uid)
+            v = safe_float_state(self.hass, eid) if eid else None
+            values.append(0.0 if v is None else v)
+
+        total = round(sum(values), 5)
+        parts = " + ".join(f"{v:.5f}" for v in values)
+        self._attr_native_value = f"{parts} = {total:.5f} {self._unit}"
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._update()
+
+
+# ---------------------------------------------------------------------------
 # Gas current price sensor
 # ---------------------------------------------------------------------------
 
@@ -627,6 +691,51 @@ class GasCurrentPriceSensor(KrowiSensor):
         result = (converted + surcharge) * (1 + vat / 100)
         self._attr_native_value = round(result, 5)
         self._attr_available = True
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._update()
+
+
+# ---------------------------------------------------------------------------
+# Gas current price EUR/kWh bridge sensor
+# ---------------------------------------------------------------------------
+
+class GasCurrentPriceEurSensor(KrowiSensor):
+    """Gas current price in EUR/kWh, derived from gas_current_price via convert_unit."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = "EUR/kWh"
+
+    def __init__(self, hass, entry_id, gas_unit, device_info, language=LANG_EN):
+        super().__init__(hass, entry_id, device_info)
+        self._attr_unique_id = UID_GAS_PRICE_EUR
+        self.entity_id = f"sensor.{UID_GAS_PRICE_EUR}"
+        self._attr_name = NAMES.get((UID_GAS_PRICE_EUR, language), NAMES[(UID_GAS_PRICE_EUR, LANG_EN)])
+        self._gas_unit = gas_unit
+
+    def _source_entity_id(self) -> str | None:
+        return _resolve_entity_id(self.hass, "sensor", UID_GAS_PRICE)
+
+    def _subscribe_listeners(self) -> None:
+        source_id = self._source_entity_id()
+        if source_id:
+            self._track([source_id], self._handle_state_change)
+
+    @callback
+    def _handle_state_change(self, event) -> None:
+        self._update()
+
+    def _update(self) -> None:
+        source_id = self._source_entity_id()
+        value = safe_float_state(self.hass, source_id) if source_id else None
+        if value is None:
+            self._attr_native_value = None
+            self.async_write_ha_state()
+            return
+        converted = convert_unit(value, self._gas_unit, "EUR/kWh")
+        self._attr_native_value = round(converted, 5) if converted is not None else None
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:

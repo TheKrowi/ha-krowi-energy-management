@@ -46,7 +46,9 @@ UID_ELECTRICITY_PRICE_EXPORT_EUR = "electricity_current_price_export_eur"
 
 # Unique ID suffixes — gas sensors
 UID_GAS_SURCHARGE_RATE = "gas_tariff_total_surcharge"
+UID_GAS_SURCHARGE_FORMULA = "gas_tariff_total_surcharge_formula"
 UID_GAS_PRICE = "gas_current_price"
+UID_GAS_PRICE_EUR = "gas_current_price_eur"
 
 # Repairs issue ID template
 ISSUE_ENTITY_RENAMED = "entity_renamed_{entry_id}"
@@ -72,18 +74,18 @@ NAMES: dict[tuple[str, str], str] = {
     (UID_ELECTRICITY_ENERGY_CONTRIBUTION, LANG_EN): "Energy contribution",
     (UID_ELECTRICITY_ENERGY_CONTRIBUTION, LANG_NL): "Energiebijdrage",
     (UID_ELECTRICITY_VAT, LANG_EN): "VAT",
-    (UID_ELECTRICITY_VAT, LANG_NL): "BTW elektriciteit",
+    (UID_ELECTRICITY_VAT, LANG_NL): "BTW",
     # Gas number entities
     (UID_GAS_DISTRIBUTION, LANG_EN): "Distribution",
-    (UID_GAS_DISTRIBUTION, LANG_NL): "Gas distributie",
+    (UID_GAS_DISTRIBUTION, LANG_NL): "Distributie",
     (UID_GAS_TRANSPORT, LANG_EN): "Transport (Fluxys)",
-    (UID_GAS_TRANSPORT, LANG_NL): "Gas transport (Fluxys)",
+    (UID_GAS_TRANSPORT, LANG_NL): "Transport (Fluxys)",
     (UID_GAS_EXCISE_DUTY, LANG_EN): "Excise duty",
-    (UID_GAS_EXCISE_DUTY, LANG_NL): "Gas bijzondere accijns",
+    (UID_GAS_EXCISE_DUTY, LANG_NL): "Bijzondere accijns",
     (UID_GAS_ENERGY_CONTRIBUTION, LANG_EN): "Energy contribution",
-    (UID_GAS_ENERGY_CONTRIBUTION, LANG_NL): "Gas energiebijdrage",
+    (UID_GAS_ENERGY_CONTRIBUTION, LANG_NL): "Energiebijdrage",
     (UID_GAS_VAT, LANG_EN): "VAT",
-    (UID_GAS_VAT, LANG_NL): "Gas BTW",
+    (UID_GAS_VAT, LANG_NL): "BTW",
     # Electricity sensor entities
     (UID_ELECTRICITY_SURCHARGE_RATE, LANG_EN): "Total surcharge",
     (UID_ELECTRICITY_SURCHARGE_RATE, LANG_NL): "Totale toeslag",
@@ -100,6 +102,10 @@ NAMES: dict[tuple[str, str], str] = {
     # Gas sensor entities
     (UID_GAS_SURCHARGE_RATE, LANG_EN): "Total surcharge",
     (UID_GAS_SURCHARGE_RATE, LANG_NL): "Totale toeslag",
+    (UID_GAS_SURCHARGE_FORMULA, LANG_EN): "Total surcharge formula",
+    (UID_GAS_SURCHARGE_FORMULA, LANG_NL): "Totale toeslag formule",
     (UID_GAS_PRICE, LANG_EN): "Current price",
     (UID_GAS_PRICE, LANG_NL): "Actuele prijs",
+    (UID_GAS_PRICE_EUR, LANG_EN): "Current price (EUR/kWh)",
+    (UID_GAS_PRICE_EUR, LANG_NL): "Actuele prijs (EUR/kWh)",
 }
