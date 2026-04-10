@@ -12,13 +12,14 @@ CONF_UNIT = "unit"
 CONF_CURRENT_PRICE_ENTITY = "current_price_entity"
 CONF_FX_RATE_ENTITY = "fx_rate_entity"
 CONF_EXPORT_TEMPLATE = "export_template"
+CONF_LOW_PRICE_CUTOFF = "low_price_cutoff"
+DEFAULT_LOW_PRICE_CUTOFF = 1.0
 
 # Domain type values
 DOMAIN_TYPE_ELECTRICITY = "electricity"
 DOMAIN_TYPE_GAS = "gas"
 
 # Default entity IDs
-DEFAULT_ELECTRICITY_PRICE_ENTITY = "sensor.nord_pool_be_current_price"
 DEFAULT_GAS_PRICE_ENTITY = "sensor.krowi_ttf_dam_30d_avg"
 
 # Unique ID suffixes — electricity number entities
@@ -43,12 +44,17 @@ UID_ELECTRICITY_PRICE_EXPORT = "electricity_current_price_export"
 
 UID_ELECTRICITY_PRICE_IMPORT_EUR = "electricity_current_price_import_eur"
 UID_ELECTRICITY_PRICE_EXPORT_EUR = "electricity_current_price_export_eur"
+UID_ELECTRICITY_SPOT_CURRENT_PRICE = "electricity_spot_current_price"
+UID_ELECTRICITY_SPOT_AVERAGE_PRICE = "electricity_spot_average_price"
 
 # Unique ID suffixes — gas sensors
 UID_GAS_SURCHARGE_RATE = "gas_tariff_total_surcharge"
 UID_GAS_SURCHARGE_FORMULA = "gas_tariff_total_surcharge_formula"
 UID_GAS_PRICE = "gas_current_price"
 UID_GAS_PRICE_EUR = "gas_current_price_eur"
+
+# Dispatcher signals
+SIGNAL_NORDPOOL_UPDATE = "krowi_energy_management_nordpool_update"
 
 # Repairs issue ID template
 ISSUE_ENTITY_RENAMED = "entity_renamed_{entry_id}"
@@ -99,6 +105,11 @@ NAMES: dict[tuple[str, str], str] = {
     (UID_ELECTRICITY_PRICE_IMPORT_EUR, LANG_NL): "Actuele importprijs (EUR/kWh)",
     (UID_ELECTRICITY_PRICE_EXPORT_EUR, LANG_EN): "Current export price (EUR/kWh)",
     (UID_ELECTRICITY_PRICE_EXPORT_EUR, LANG_NL): "Actuele exportprijs (EUR/kWh)",
+    # Electricity spot sensors
+    (UID_ELECTRICITY_SPOT_CURRENT_PRICE, LANG_EN): "Spot current price",
+    (UID_ELECTRICITY_SPOT_CURRENT_PRICE, LANG_NL): "Spotprijs huidig",
+    (UID_ELECTRICITY_SPOT_AVERAGE_PRICE, LANG_EN): "Spot average price",
+    (UID_ELECTRICITY_SPOT_AVERAGE_PRICE, LANG_NL): "Spotprijs gemiddeld",
     # Gas sensor entities
     (UID_GAS_SURCHARGE_RATE, LANG_EN): "Total surcharge",
     (UID_GAS_SURCHARGE_RATE, LANG_NL): "Totale toeslag",

@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant, callback # type: ignore
 from homeassistant.helpers import entity_registry as er # type: ignore
 from homeassistant.helpers.device_registry import DeviceInfo # type: ignore
 from homeassistant.helpers.entity_platform import AddEntitiesCallback # type: ignore
+from homeassistant.helpers.dispatcher import async_dispatcher_connect # type: ignore
 from homeassistant.helpers.event import ( # type: ignore
     TrackTemplate,
     async_track_state_change_event,
@@ -22,12 +23,12 @@ from .const import (
     CONF_CURRENT_PRICE_ENTITY,
     CONF_DOMAIN_TYPE,
     CONF_EXPORT_TEMPLATE,
-    CONF_FX_RATE_ENTITY,
     CONF_UNIT,
     DOMAIN,
     DOMAIN_TYPE_ELECTRICITY,
     LANG_EN,
     NAMES,
+    SIGNAL_NORDPOOL_UPDATE,
     UNIT_ELECTRICITY,
     UID_ELECTRICITY_DISTRIBUTION_TRANSPORT,
     UID_ELECTRICITY_ENERGY_CONTRIBUTION,
@@ -37,6 +38,8 @@ from .const import (
     UID_ELECTRICITY_PRICE_EXPORT_EUR,
     UID_ELECTRICITY_PRICE_IMPORT,
     UID_ELECTRICITY_PRICE_IMPORT_EUR,
+    UID_ELECTRICITY_SPOT_AVERAGE_PRICE,
+    UID_ELECTRICITY_SPOT_CURRENT_PRICE,
     UID_ELECTRICITY_SURCHARGE_FORMULA,
     UID_ELECTRICITY_SURCHARGE_RATE,
     UID_ELECTRICITY_VAT,
@@ -50,7 +53,7 @@ from .const import (
     UID_GAS_TRANSPORT,
     UID_GAS_VAT,
 )
-from .utils import apply_fx, convert_unit, get_language, safe_float_state
+from .utils import convert_unit, get_language, safe_float_state
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -78,16 +81,14 @@ async def async_setup_entry(
             identifiers={(DOMAIN, f"{entry_id}_electricity")},
             name="Electricity",
         )
-        current_price_entity = effective[CONF_CURRENT_PRICE_ENTITY]
-        fx_rate_entity = effective.get(CONF_FX_RATE_ENTITY) or ""
         export_template_str = effective[CONF_EXPORT_TEMPLATE]
 
         entities = [
+            ElectricitySpotCurrentPriceSensor(hass, entry_id, device_info, language),
+            ElectricitySpotAverageSensor(hass, entry_id, device_info, language),
             ElectricitySurchargeSensor(hass, entry_id, unit, device_info, language),
             ElectricitySurchargeFormulaSensor(hass, entry_id, unit, device_info, language),
-            ElectricityImportPriceSensor(
-                hass, entry_id, unit, current_price_entity, fx_rate_entity, device_info, language
-            ),
+            ElectricityImportPriceSensor(hass, entry_id, device_info, language),
             ElectricityExportPriceSensor(
                 hass, entry_id, unit, export_template_str, device_info, language
             ),
@@ -150,6 +151,98 @@ class KrowiSensor(SensorEntity):
         self._unsub_listeners.append(
             async_track_state_change_event(self.hass, entity_ids, handler)
         )
+
+
+# ---------------------------------------------------------------------------
+# Electricity spot price sensors (Nord Pool BE, sourced from NordpoolBeStore)
+# ---------------------------------------------------------------------------
+
+class ElectricitySpotCurrentPriceSensor(KrowiSensor):
+    """Current 15-min Nord Pool BE spot price in c€/kWh."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = UNIT_ELECTRICITY
+
+    def __init__(self, hass, entry_id, device_info, language=LANG_EN):
+        super().__init__(hass, entry_id, device_info)
+        self._attr_unique_id = UID_ELECTRICITY_SPOT_CURRENT_PRICE
+        self.entity_id = f"sensor.{UID_ELECTRICITY_SPOT_CURRENT_PRICE}"
+        self._attr_name = NAMES.get(
+            (UID_ELECTRICITY_SPOT_CURRENT_PRICE, language),
+            NAMES[(UID_ELECTRICITY_SPOT_CURRENT_PRICE, LANG_EN)],
+        )
+
+    def _get_store(self):
+        return self.hass.data.get(DOMAIN, {}).get("nordpool_store")
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._unsub_listeners.append(
+            async_dispatcher_connect(self.hass, SIGNAL_NORDPOOL_UPDATE, self._on_update)
+        )
+        self._on_update()
+
+    @callback
+    def _on_update(self) -> None:
+        store = self._get_store()
+        if store is None or store.current_price is None:
+            self._attr_native_value = None
+            self._attr_available = False
+        else:
+            self._attr_native_value = store.current_price
+            self._attr_available = True
+        self.async_write_ha_state()
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        store = self._get_store()
+        if store is None:
+            return {}
+        return {
+            "today": store.today,
+            "tomorrow": store.tomorrow,
+            "tomorrow_valid": store.tomorrow_valid,
+            "average": store.average,
+            "low_price": store.low_price,
+            "price_percent_to_average": store.price_percent_to_average,
+        }
+
+
+class ElectricitySpotAverageSensor(KrowiSensor):
+    """Today's average Nord Pool BE spot price in c€/kWh."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = UNIT_ELECTRICITY
+
+    def __init__(self, hass, entry_id, device_info, language=LANG_EN):
+        super().__init__(hass, entry_id, device_info)
+        self._attr_unique_id = UID_ELECTRICITY_SPOT_AVERAGE_PRICE
+        self.entity_id = f"sensor.{UID_ELECTRICITY_SPOT_AVERAGE_PRICE}"
+        self._attr_name = NAMES.get(
+            (UID_ELECTRICITY_SPOT_AVERAGE_PRICE, language),
+            NAMES[(UID_ELECTRICITY_SPOT_AVERAGE_PRICE, LANG_EN)],
+        )
+
+    def _get_store(self):
+        return self.hass.data.get(DOMAIN, {}).get("nordpool_store")
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._unsub_listeners.append(
+            async_dispatcher_connect(self.hass, SIGNAL_NORDPOOL_UPDATE, self._on_update)
+        )
+        self._on_update()
+
+    @callback
+    def _on_update(self) -> None:
+        store = self._get_store()
+        if store is None or store.average is None:
+            self._attr_native_value = None
+            self._attr_available = False
+        else:
+            self._attr_native_value = store.average
+            self._attr_available = True
+        self.async_write_ha_state()
 
 
 # ---------------------------------------------------------------------------
@@ -272,33 +365,28 @@ class ElectricitySurchargeFormulaSensor(KrowiSensor):
 # ---------------------------------------------------------------------------
 
 class ElectricityImportPriceSensor(KrowiSensor):
-    """Electricity import price: (current_price_converted + surcharge) * (1 + vat/100)."""
+    """Electricity import price: (spot_price + surcharge) * (1 + vat/100)."""
 
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, hass, entry_id, unit, current_price_entity, fx_rate_entity, device_info, language=LANG_EN):
+    def __init__(self, hass, entry_id, device_info, language=LANG_EN):
         super().__init__(hass, entry_id, device_info)
         self._attr_unique_id = UID_ELECTRICITY_PRICE_IMPORT
         self.entity_id = f"sensor.{UID_ELECTRICITY_PRICE_IMPORT}"
         self._attr_name = NAMES.get((UID_ELECTRICITY_PRICE_IMPORT, language), NAMES[(UID_ELECTRICITY_PRICE_IMPORT, LANG_EN)])
-        self._attr_native_unit_of_measurement = unit
-        self._unit = unit
-        self._current_price_entity = current_price_entity
-        self._fx_rate_entity = fx_rate_entity or ""
+        self._attr_native_unit_of_measurement = UNIT_ELECTRICITY
 
     def _subscribe_listeners(self) -> None:
-        watch = [self._current_price_entity]
-        if self._fx_rate_entity:
-            watch.append(self._fx_rate_entity)
-
+        watch = []
+        spot_id = _resolve_entity_id(self.hass, "sensor", UID_ELECTRICITY_SPOT_CURRENT_PRICE)
+        if spot_id:
+            watch.append(spot_id)
         surcharge_id = _resolve_entity_id(self.hass, "sensor", UID_ELECTRICITY_SURCHARGE_RATE)
         if surcharge_id:
             watch.append(surcharge_id)
-
         vat_id = _resolve_entity_id(self.hass, "number", UID_ELECTRICITY_VAT)
         if vat_id:
             watch.append(vat_id)
-
         if watch:
             self._track(watch, self._handle_state_change)
 
@@ -307,55 +395,33 @@ class ElectricityImportPriceSensor(KrowiSensor):
         self._update()
 
     def _update(self) -> None:
-        # Read current price with unit conversion
-        price_state = self.hass.states.get(self._current_price_entity)
-        if price_state is None or price_state.state in ("unavailable", "unknown"):
-            _LOGGER.warning(
-                "krowi_energy_management: current price entity '%s' unavailable",
-                self._current_price_entity,
-            )
+        spot_id = _resolve_entity_id(self.hass, "sensor", UID_ELECTRICITY_SPOT_CURRENT_PRICE)
+        spot_state = self.hass.states.get(spot_id) if spot_id else None
+        if spot_state is None or spot_state.state in ("unavailable", "unknown"):
             self._attr_native_value = None
             self._attr_available = False
             self.async_write_ha_state()
             return
 
         try:
-            raw_price = float(price_state.state)
+            spot_price = float(spot_state.state)
         except (ValueError, TypeError):
             self._attr_native_value = None
             self._attr_available = False
             self.async_write_ha_state()
             return
 
-        source_unit = price_state.attributes.get("unit_of_measurement", "")
-        converted = convert_unit(raw_price, source_unit, self._unit)
-        if converted is None:
-            self._attr_native_value = None
-            self._attr_available = False
-            self.async_write_ha_state()
-            return
-
-        # Apply FX
-        converted = apply_fx(converted, self._fx_rate_entity, self.hass)
-        if converted is None:
-            self._attr_native_value = None
-            self._attr_available = False
-            self.async_write_ha_state()
-            return
-
-        # Surcharge
         surcharge_id = _resolve_entity_id(self.hass, "sensor", UID_ELECTRICITY_SURCHARGE_RATE)
         surcharge = safe_float_state(self.hass, surcharge_id) if surcharge_id else 0.0
         if surcharge is None:
             surcharge = 0.0
 
-        # VAT
         vat_id = _resolve_entity_id(self.hass, "number", UID_ELECTRICITY_VAT)
         vat = safe_float_state(self.hass, vat_id) if vat_id else 0.0
         if vat is None:
             vat = 0.0
 
-        result = (converted + surcharge) * (1 + vat / 100)
+        result = (spot_price + surcharge) * (1 + vat / 100)
         self._attr_native_value = round(result, 5)
         self._attr_available = True
         self.async_write_ha_state()

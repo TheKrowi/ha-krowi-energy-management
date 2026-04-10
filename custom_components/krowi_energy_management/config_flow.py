@@ -12,11 +12,11 @@ from .const import (
     CONF_CURRENT_PRICE_ENTITY,
     CONF_DOMAIN_TYPE,
     CONF_EXPORT_TEMPLATE,
-    CONF_FX_RATE_ENTITY,
     CONF_LANGUAGE,
+    CONF_LOW_PRICE_CUTOFF,
     CONF_UNIT,
-    DEFAULT_ELECTRICITY_PRICE_ENTITY,
     DEFAULT_GAS_PRICE_ENTITY,
+    DEFAULT_LOW_PRICE_CUTOFF,
     DOMAIN,
     DOMAIN_TYPE_ELECTRICITY,
     DOMAIN_TYPE_GAS,
@@ -32,17 +32,38 @@ def _electricity_schema(defaults: dict | None = None) -> vol.Schema:
     return vol.Schema(
         {
             vol.Required(
-                CONF_CURRENT_PRICE_ENTITY,
-                default=d.get(CONF_CURRENT_PRICE_ENTITY, DEFAULT_ELECTRICITY_PRICE_ENTITY),
-            ): selector.EntitySelector(),
-            vol.Optional(CONF_FX_RATE_ENTITY): selector.EntitySelector(),
+                CONF_EXPORT_TEMPLATE,
+                default=d.get(
+                    CONF_EXPORT_TEMPLATE,
+                    "{{ (states('sensor.electricity_spot_average_price') | float(0) * 0.94 - 0.017) | round(5) }}",
+                ),
+            ): str,
+        }
+    )
+
+
+def _electricity_options_schema(defaults: dict | None = None) -> vol.Schema:
+    d = defaults or {}
+    return vol.Schema(
+        {
             vol.Required(
                 CONF_EXPORT_TEMPLATE,
                 default=d.get(
                     CONF_EXPORT_TEMPLATE,
-                    "{{ (states('sensor.nord_pool_be_average_price') | float(0) * 0.94 - 0.017) | round(5) }}",
+                    "{{ (states('sensor.electricity_spot_average_price') | float(0) * 0.94 - 0.017) | round(5) }}",
                 ),
             ): str,
+            vol.Optional(
+                CONF_LOW_PRICE_CUTOFF,
+                default=d.get(CONF_LOW_PRICE_CUTOFF, DEFAULT_LOW_PRICE_CUTOFF),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0.0,
+                    max=2.0,
+                    step=0.01,
+                    mode=selector.NumberSelectorMode.BOX,
+                )
+            ),
         }
     )
 
@@ -63,7 +84,7 @@ def _gas_schema(defaults: dict | None = None) -> vol.Schema:
 class KrowiEnergyManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for Krowi Energy Management."""
 
-    VERSION = 1
+    VERSION = 2
 
     async def async_step_user(self, user_input=None):
         """Delegate to menu step."""
@@ -196,7 +217,7 @@ class KrowiEnergyManagementOptionsFlow(config_entries.OptionsFlow):
         if user_input is None:
             return self.async_show_form(
                 step_id="electricity_options",
-                data_schema=_electricity_schema(current),
+                data_schema=_electricity_options_schema(current),
             )
 
         return self.async_create_entry(title="", data=user_input)

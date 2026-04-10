@@ -44,41 +44,28 @@ This sensor has no `unit_of_measurement` and no `state_class`.
 ### Requirement: Electricity import price sensor
 The component SHALL expose a sensor with unique ID `electricity_current_price_import` and English display name "Current import price" that computes the current electricity import price.
 
-Formula: `(current_price + surcharge) * (1 + vat / 100)`, rounded to 5 decimal places.
+Formula: `(spot_price + surcharge) * (1 + vat / 100)`, rounded to 5 decimal places.
 
 Where:
-- `current_price` is the state of the configured `current_price_entity`, auto-converted to `electricity_unit`
-- `surcharge` is the state of `electricity_tariff_total_surcharge`
+- `spot_price` is the state of `electricity_spot_current_price` (always `c€/kWh`)
+- `surcharge` is the state of `electricity_tariff_total_surcharge` (always `c€/kWh`)
 - `vat` is the state of `electricity_vat` (in %)
 
-`unit_of_measurement` SHALL equal `electricity_unit`. `state_class` SHALL be `measurement`.
+`unit_of_measurement` SHALL be `"c€/kWh"`. `state_class` SHALL be `measurement`.
+
+The sensor SHALL track state changes on `electricity_spot_current_price`, `electricity_tariff_total_surcharge`, and `electricity_vat`.
 
 #### Scenario: Import price computed correctly
-- **WHEN** Nord Pool reports `0.09079` €/kWh, surcharge is `0.05442` €/kWh, VAT is `21.0%`
-- **THEN** import price SHALL be `(0.09079 + 0.05442) * 1.21 = 0.17570` (rounded to 5 decimal places)
+- **WHEN** `electricity_spot_current_price` is `9.079` (c€/kWh), surcharge is `5.442` (c€/kWh), VAT is `21.0%`
+- **THEN** import price SHALL be `(9.079 + 5.442) * 1.21 = 17.57002` (rounded to 5 decimal places)
 
-#### Scenario: Nord Pool unit auto-converted from MWh to kWh
-- **WHEN** Nord Pool entity reports in `€/MWh` and `electricity_unit` is `€/kWh`
-- **THEN** Nord Pool value SHALL be divided by `1000` before applying the formula
-
-#### Scenario: FX conversion applied when configured
-- **WHEN** `fx_rate_entity` is set and its state is `0.086` (e.g. NOK/EUR)
-- **WHEN** the configured `current_price_entity` reports in `NOK/kWh` and `electricity_unit` is `€/kWh`
-- **THEN** the source value SHALL first be magnitude-converted (factor = 1.0, same magnitude), then multiplied by `0.086`
-- **THEN** the result SHALL equal `source_nok_value * 0.086`
-
-#### Scenario: Import price is unavailable when current price entity is unavailable
-- **WHEN** the configured `current_price_entity` is missing or in `unavailable`/`unknown` state
+#### Scenario: Import price is unavailable when spot price is unavailable
+- **WHEN** `electricity_spot_current_price` is `unavailable` or `unknown`
 - **THEN** `electricity_current_price_import` state SHALL be `unavailable`
 
-#### Scenario: Import price is unavailable when FX sensor is unavailable
-- **WHEN** `fx_rate_entity` is configured but the entity is `unavailable` or non-numeric
-- **THEN** `electricity_current_price_import` state SHALL be `unavailable`
-
-#### Scenario: Unit not recognised
-- **WHEN** the `current_price_entity`'s `unit_of_measurement` attribute cannot be mapped to a known unit
-- **THEN** `electricity_current_price_import` SHALL be set to `unavailable`
-- **THEN** a warning SHALL be logged indicating the unrecognised unit
+#### Scenario: Import price updates when spot price changes
+- **WHEN** `electricity_spot_current_price` changes to a new value on a 15-min tick
+- **THEN** `electricity_current_price_import` SHALL recompute immediately
 
 ---
 
