@@ -4,6 +4,8 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime, timedelta
 
+from dateutil.relativedelta import relativedelta
+
 from homeassistant.core import HomeAssistant, callback  # type: ignore
 from homeassistant.helpers.aiohttp_client import async_get_clientsession  # type: ignore
 from homeassistant.helpers.dispatcher import async_dispatcher_send  # type: ignore
@@ -24,6 +26,8 @@ class TtfDamStore:
     - Midnight (00:00:01): set data_is_fresh=False, re-fetch
     - Every 30-min tick (X:00:01, X:30:01): if not data_is_fresh, fetch
 
+    Fetch window: one calendar month (today - relativedelta(months=1) to today),
+    self-adjusting for month length including February (28/29 days).
     Prices are converted from EUR/MWh to c€/kWh at ingest (divide by 10).
     """
 
@@ -67,7 +71,7 @@ class TtfDamStore:
     async def async_fetch(self) -> None:
         """Fetch latest TTF DAM prices from the Elindus API."""
         today = date.today()
-        from_date = (today - timedelta(days=30)).isoformat()
+        from_date = (today - relativedelta(months=1)).isoformat()
         to_date = today.isoformat()
 
         session = async_get_clientsession(self._hass)
@@ -136,7 +140,7 @@ class TtfDamStore:
 
     @property
     def average(self) -> float | None:
-        """30-day average TTF DAM price in c€/kWh; None until first successful fetch."""
+        """Rolling calendar-month average TTF DAM price in c€/kWh; None until first successful fetch."""
         return self._average
 
     @property

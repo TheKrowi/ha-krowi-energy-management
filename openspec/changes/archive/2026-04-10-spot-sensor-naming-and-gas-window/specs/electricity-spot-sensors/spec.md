@@ -1,10 +1,4 @@
-# Spec: electricity-spot-sensors
-
-## Purpose
-
-Defines the electricity spot price sensor entities that expose the internally-fetched Nord Pool BE day-ahead prices: current slot price and today's average price.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Electricity spot current price sensor
 The component SHALL expose a sensor with unique ID `electricity_spot_current_price`, English display name "Current price (EPEX SPOT)", and Dutch display name "Huidige prijs (EPEX SPOT)" that reports the Nord Pool BE current 15-minute slot price in `c€/kWh`.
@@ -24,25 +18,6 @@ The component SHALL expose a sensor with unique ID `electricity_spot_current_pri
 - **THEN** the sensor friendly name SHALL be `"Huidige prijs (EPEX SPOT)"`
 - **WHEN** language is set to `"en"`
 - **THEN** the sensor friendly name SHALL be `"Current price (EPEX SPOT)"`
-
-#### Scenario: Sensor state attributes are populated
-- **WHEN** `store.data_today` contains 96 slots and `store.data_tomorrow` contains 96 slots
-- **THEN** the sensor's `extra_state_attributes` SHALL contain:
-  - `today`: list of 96 float values in chronological order
-  - `tomorrow`: list of 96 float values in chronological order
-  - `tomorrow_valid`: `True`
-  - `average`: mean of today's 96 values rounded to 5 decimal places
-  - `low_price`: bool
-  - `price_percent_to_average`: float rounded to 5 decimal places
-
-#### Scenario: Tomorrow attributes when not yet available
-- **WHEN** `store.tomorrow_valid` is `False`
-- **THEN** `tomorrow` attribute SHALL be `[]`
-- **THEN** `tomorrow_valid` attribute SHALL be `False`
-
-#### Scenario: Sensor updates at each 15-min boundary
-- **WHEN** the clock advances from `00:14:59` to `00:15:01`
-- **THEN** `electricity_spot_current_price` SHALL update to the value of the `00:15–00:30` slot
 
 ---
 
@@ -64,25 +39,3 @@ The component SHALL expose a sensor with unique ID `electricity_spot_average_pri
 - **THEN** the sensor friendly name SHALL be `"Gemiddelde dagprijs (EPEX SPOT)"`
 - **WHEN** language is set to `"en"`
 - **THEN** the sensor friendly name SHALL be `"Daily average price (EPEX SPOT)"`
-
-#### Scenario: Average updates at midnight when new day data is loaded
-- **WHEN** the midnight fetch completes with a new day's prices
-- **THEN** `electricity_spot_average_price` SHALL update to the new day's mean value
-
----
-
-### Requirement: Spot sensors belong to the electricity device
-Both `electricity_spot_current_price` and `electricity_spot_average_price` SHALL be associated with the `DeviceInfo` for the electricity config entry (identifiers `(DOMAIN, f"{entry_id}_electricity")`).
-
-#### Scenario: Spot sensors appear under the Electricity device in HA
-- **WHEN** the electricity config entry is loaded
-- **THEN** both spot sensors SHALL appear under the "Electricity" device in the HA device registry
-
----
-
-### Requirement: Spot sensors are set up as part of the electricity platform
-Both spot sensors SHALL be instantiated in `sensor.py`'s `async_setup_entry` when `domain_type == DOMAIN_TYPE_ELECTRICITY`. They SHALL be added alongside the existing electricity sensors.
-
-#### Scenario: Spot sensors present on electricity entry load
-- **WHEN** the electricity config entry loads
-- **THEN** `electricity_spot_current_price` and `electricity_spot_average_price` SHALL both be registered in HA

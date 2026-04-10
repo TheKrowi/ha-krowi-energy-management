@@ -1,7 +1,7 @@
 {
   "domain": "krowi_energy_management",
   "name": "Krowi Energy Management",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "config_flow": true,
   "documentation": "https://github.com/TheKrowi/ha-krowi-energy-management",
   "issue_tracker": "https://github.com/TheKrowi/ha-krowi-energy-management/issues",

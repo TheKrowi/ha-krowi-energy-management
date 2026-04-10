@@ -1,10 +1,4 @@
-# Spec: gas-spot-sensors
-
-## Purpose
-
-Defines the two gas spot price sensor entities (`gas_spot_today_price` and `gas_spot_average_price`) sourced from the internal `TtfDamStore`.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Gas spot today price sensor
 The component SHALL expose a sensor with unique ID `gas_spot_today_price`, English display name "Daily price (TTF DAM)", and Dutch display name "Dagprijs (TTF DAM)" that reports the latest daily TTF DAM price in `c€/kWh`, sourced from the internal `TtfDamStore`.
@@ -26,10 +20,6 @@ The sensor SHALL subscribe to `SIGNAL_TTF_DAM_UPDATE` via `async_dispatcher_conn
 - **THEN** the sensor friendly name SHALL be `"Dagprijs (TTF DAM)"`
 - **WHEN** language is set to `"en"`
 - **THEN** the sensor friendly name SHALL be `"Daily price (TTF DAM)"`
-
-#### Scenario: Sensor updates when store dispatches signal
-- **WHEN** `SIGNAL_TTF_DAM_UPDATE` is dispatched and `store.today_price` changes
-- **THEN** `gas_spot_today_price` SHALL write its new state immediately
 
 ---
 
@@ -53,14 +43,3 @@ The sensor SHALL subscribe to `SIGNAL_TTF_DAM_UPDATE` via `async_dispatcher_conn
 - **THEN** the sensor friendly name SHALL be `"Gemiddelde maandprijs (TTF DAM)"`
 - **WHEN** language is set to `"en"`
 - **THEN** the sensor friendly name SHALL be `"Monthly average price (TTF DAM)"`
-
----
-
-### Requirement: Gas spot sensors grouped under Gas device
-Both `gas_spot_today_price` and `gas_spot_average_price` SHALL return a `DeviceInfo` that places them under the shared Gas device.
-
-The device identifier SHALL be `(DOMAIN, f"{entry_id}_gas")`.
-
-#### Scenario: Gas spot sensors belong to Gas device
-- **WHEN** the component is loaded
-- **THEN** both gas spot sensor entities SHALL be associated with the device identified by `(DOMAIN, entry_id + "_gas")`

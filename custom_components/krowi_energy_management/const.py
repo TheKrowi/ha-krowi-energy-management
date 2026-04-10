@@ -13,6 +13,7 @@ CONF_FX_RATE_ENTITY = "fx_rate_entity"
 CONF_EXPORT_TEMPLATE = "export_template"
 CONF_LOW_PRICE_CUTOFF = "low_price_cutoff"
 DEFAULT_LOW_PRICE_CUTOFF = 1.0
+DEFAULT_EXPORT_TEMPLATE = "{{ ((states('sensor.electricity_spot_average_price') | float(0) / 100 * 0.94 - 0.017) * 100) | round(5) }}"
 
 # Domain type values
 DOMAIN_TYPE_ELECTRICITY = "electricity"
@@ -105,10 +106,10 @@ NAMES: dict[tuple[str, str], str] = {
     (UID_ELECTRICITY_PRICE_EXPORT_EUR, LANG_EN): "Current export price (EUR/kWh)",
     (UID_ELECTRICITY_PRICE_EXPORT_EUR, LANG_NL): "Actuele exportprijs (EUR/kWh)",
     # Electricity spot sensors
-    (UID_ELECTRICITY_SPOT_CURRENT_PRICE, LANG_EN): "Spot current price",
-    (UID_ELECTRICITY_SPOT_CURRENT_PRICE, LANG_NL): "Spotprijs huidig",
-    (UID_ELECTRICITY_SPOT_AVERAGE_PRICE, LANG_EN): "Spot average price",
-    (UID_ELECTRICITY_SPOT_AVERAGE_PRICE, LANG_NL): "Spotprijs gemiddeld",
+    (UID_ELECTRICITY_SPOT_CURRENT_PRICE, LANG_EN): "Current price (EPEX SPOT)",
+    (UID_ELECTRICITY_SPOT_CURRENT_PRICE, LANG_NL): "Huidige prijs (EPEX SPOT)",
+    (UID_ELECTRICITY_SPOT_AVERAGE_PRICE, LANG_EN): "Daily average price (EPEX SPOT)",
+    (UID_ELECTRICITY_SPOT_AVERAGE_PRICE, LANG_NL): "Gemiddelde dagprijs (EPEX SPOT)",
     # Gas sensor entities
     (UID_GAS_SURCHARGE_RATE, LANG_EN): "Total surcharge",
     (UID_GAS_SURCHARGE_RATE, LANG_NL): "Totale toeslag",
@@ -119,8 +120,8 @@ NAMES: dict[tuple[str, str], str] = {
     (UID_GAS_PRICE_EUR, LANG_EN): "Current price (EUR/kWh)",
     (UID_GAS_PRICE_EUR, LANG_NL): "Actuele prijs (EUR/kWh)",
     # Gas spot sensor entities
-    (UID_GAS_SPOT_TODAY_PRICE, LANG_EN): "Spot today price",
-    (UID_GAS_SPOT_TODAY_PRICE, LANG_NL): "Spotprijs vandaag",
-    (UID_GAS_SPOT_AVERAGE_PRICE, LANG_EN): "Spot 30-day average",
-    (UID_GAS_SPOT_AVERAGE_PRICE, LANG_NL): "Spotprijs 30-daags gemiddelde",
+    (UID_GAS_SPOT_TODAY_PRICE, LANG_EN): "Daily price (TTF DAM)",
+    (UID_GAS_SPOT_TODAY_PRICE, LANG_NL): "Dagprijs (TTF DAM)",
+    (UID_GAS_SPOT_AVERAGE_PRICE, LANG_EN): "Monthly average price (TTF DAM)",
+    (UID_GAS_SPOT_AVERAGE_PRICE, LANG_NL): "Gemiddelde maandprijs (TTF DAM)",
 }
