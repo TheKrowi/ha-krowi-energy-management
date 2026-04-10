@@ -1,10 +1,4 @@
-# Spec: electricity-sensors
-
-## Purpose
-
-Defines the computed electricity sensor entities: total surcharge rate, surcharge formula string, import price, and export price.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Electricity total surcharge rate sensor
 The component SHALL expose a sensor with unique ID `electricity_tariff_total_surcharge` and English display name "Total surcharge" that reports the sum of the four electricity tariff rate number entities (excluding VAT).
@@ -36,7 +30,7 @@ This sensor has no `unit_of_measurement` and no `state_class`.
 - **THEN** the sensor state SHALL be `"0.01250 + 0.03750 + 0.00422 + 0.00020 = 0.05442"`
 
 #### Scenario: Formula updates when any rate changes
-- **WHEN** any contributing electricity rate entity changes
+- **WHEN** any contributing electricity tariff entity changes
 - **THEN** the formula string sensor SHALL recompute immediately
 
 ---
@@ -112,4 +106,4 @@ The device identifier SHALL be `(DOMAIN, f"{entry_id}_electricity")`.
 
 #### Scenario: Electricity sensors belong to Electricity device
 - **WHEN** the component is loaded
-- **THEN** all four electricity sensor entities SHALL be associated with the device identified by `(DOMAIN, entry_id + "_electricity")`
+- **THEN** all electricity sensor entities SHALL be associated with the device identified by `(DOMAIN, entry_id + "_electricity")`

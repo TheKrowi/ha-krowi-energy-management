@@ -29,24 +29,24 @@ The component SHALL create five `NumberEntity` instances for electricity tariffs
 
 Entities (all under domain `krowi_energy_management`):
 
-| Unique ID suffix | Friendly name | Unit | Min | Max | Step |
-|---|---|---|---|---|---|
-| `electricity_green_energy_contribution_rate` | Groene stroom bijdrage | electricity_unit | 0 | 9999 | 0.00001 |
-| `electricity_distribution_transport_rate` | Distributie & transport | electricity_unit | 0 | 9999 | 0.00001 |
-| `electricity_excise_duty_rate` | Bijzondere accijns | electricity_unit | 0 | 9999 | 0.00001 |
-| `electricity_energy_contribution_rate` | Energiebijdrage | electricity_unit | 0 | 9999 | 0.00001 |
-| `electricity_vat_rate` | BTW elektriciteit | `%` | 0 | 100 | 0.01 |
+| Unique ID | Friendly name (EN) | Unit | Min | Max | Step |
+|-----------|-------------------|------|-----|-----|------|
+| `electricity_tariff_green_energy_contribution` | Green energy contribution | electricity_unit | 0 | 9999 | 0.00001 |
+| `electricity_tariff_distribution_transport` | Distribution & transport | electricity_unit | 0 | 9999 | 0.00001 |
+| `electricity_tariff_excise_duty` | Excise duty | electricity_unit | 0 | 9999 | 0.00001 |
+| `electricity_tariff_energy_contribution` | Energy contribution | electricity_unit | 0 | 9999 | 0.00001 |
+| `electricity_vat` | VAT | `%` | 0 | 100 | 0.01 |
 
-`electricity_unit` is the unit configured in the config entry (one of `c€/kWh`, `€/kWh`, `€/MWh`).
+`electricity_unit` is always `c€/kWh` for the electricity domain.
 
 #### Scenario: Entities are present after setup
 - **WHEN** the config entry is loaded
-- **THEN** all five electricity number entities SHALL exist in HA with the correct entity IDs
+- **THEN** all five electricity number entities SHALL exist in HA with the correct entity IDs derived from the UIDs above
 
 #### Scenario: VAT entity has percent unit regardless of electricity_unit
-- **WHEN** electricity_unit is `€/MWh`
-- **THEN** `electricity_vat_rate` SHALL have `unit_of_measurement = "%"`
-- **THEN** all other electricity rate entities SHALL have `unit_of_measurement = "€/MWh"`
+- **WHEN** the electricity entry is loaded
+- **THEN** `electricity_vat` SHALL have `unit_of_measurement = "%"`
+- **THEN** all other electricity tariff entities SHALL have `unit_of_measurement = "c€/kWh"`
 
 ---
 

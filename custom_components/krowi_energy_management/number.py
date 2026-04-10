@@ -15,6 +15,8 @@ from .const import (
     DOMAIN,
     DOMAIN_TYPE_ELECTRICITY,
     DOMAIN_TYPE_GAS,
+    LANG_EN,
+    NAMES,
     UNIT_ELECTRICITY,
     UID_ELECTRICITY_DISTRIBUTION_TRANSPORT,
     UID_ELECTRICITY_ENERGY_CONTRIBUTION,
@@ -27,12 +29,12 @@ from .const import (
     UID_GAS_TRANSPORT,
     UID_GAS_VAT,
 )
+from .utils import get_language
 
 
 @dataclass
 class _NumberDescriptor:
     unique_id_suffix: str
-    name: str
     unit: str  # percent sign or placeholder replaced at runtime
     min_value: float
     max_value: float
@@ -40,19 +42,19 @@ class _NumberDescriptor:
 
 
 _ELECTRICITY_DESCRIPTORS: list[_NumberDescriptor] = [
-    _NumberDescriptor(UID_ELECTRICITY_GREEN_ENERGY, "Groene stroom bijdrage", "UNIT", 0, 9999, 0.00001),
-    _NumberDescriptor(UID_ELECTRICITY_DISTRIBUTION_TRANSPORT, "Distributie & transport", "UNIT", 0, 9999, 0.00001),
-    _NumberDescriptor(UID_ELECTRICITY_EXCISE_DUTY, "Bijzondere accijns", "UNIT", 0, 9999, 0.00001),
-    _NumberDescriptor(UID_ELECTRICITY_ENERGY_CONTRIBUTION, "Energiebijdrage", "UNIT", 0, 9999, 0.00001),
-    _NumberDescriptor(UID_ELECTRICITY_VAT, "BTW elektriciteit", "%", 0, 100, 0.01),
+    _NumberDescriptor(UID_ELECTRICITY_GREEN_ENERGY, "UNIT", 0, 9999, 0.00001),
+    _NumberDescriptor(UID_ELECTRICITY_DISTRIBUTION_TRANSPORT, "UNIT", 0, 9999, 0.00001),
+    _NumberDescriptor(UID_ELECTRICITY_EXCISE_DUTY, "UNIT", 0, 9999, 0.00001),
+    _NumberDescriptor(UID_ELECTRICITY_ENERGY_CONTRIBUTION, "UNIT", 0, 9999, 0.00001),
+    _NumberDescriptor(UID_ELECTRICITY_VAT, "%", 0, 100, 0.01),
 ]
 
 _GAS_DESCRIPTORS: list[_NumberDescriptor] = [
-    _NumberDescriptor(UID_GAS_DISTRIBUTION, "Gas distributie", "UNIT", 0, 9999, 0.00001),
-    _NumberDescriptor(UID_GAS_TRANSPORT, "Gas transport (Fluxys)", "UNIT", 0, 9999, 0.00001),
-    _NumberDescriptor(UID_GAS_EXCISE_DUTY, "Gas bijzondere accijns", "UNIT", 0, 9999, 0.00001),
-    _NumberDescriptor(UID_GAS_ENERGY_CONTRIBUTION, "Gas energiebijdrage", "UNIT", 0, 9999, 0.00001),
-    _NumberDescriptor(UID_GAS_VAT, "Gas BTW", "%", 0, 100, 0.01),
+    _NumberDescriptor(UID_GAS_DISTRIBUTION, "UNIT", 0, 9999, 0.00001),
+    _NumberDescriptor(UID_GAS_TRANSPORT, "UNIT", 0, 9999, 0.00001),
+    _NumberDescriptor(UID_GAS_EXCISE_DUTY, "UNIT", 0, 9999, 0.00001),
+    _NumberDescriptor(UID_GAS_ENERGY_CONTRIBUTION, "UNIT", 0, 9999, 0.00001),
+    _NumberDescriptor(UID_GAS_VAT, "%", 0, 100, 0.01),
 ]
 
 
@@ -64,6 +66,7 @@ async def async_setup_entry(
     """Set up number entities for this config entry."""
     effective = {**entry.data, **entry.options}
     domain_type = entry.data[CONF_DOMAIN_TYPE]
+    language = get_language(hass)
 
     if domain_type == DOMAIN_TYPE_ELECTRICITY:
         unit = UNIT_ELECTRICITY
@@ -87,6 +90,7 @@ async def async_setup_entry(
             descriptor=desc,
             unit=unit if desc.unit == "UNIT" else desc.unit,
             device_info=device_info,
+            language=language,
         )
         for desc in descriptors
     ]
@@ -105,10 +109,11 @@ class KrowiNumberEntity(RestoreNumber, NumberEntity):
         descriptor: _NumberDescriptor,
         unit: str,
         device_info: DeviceInfo,
+        language: str = LANG_EN,
     ) -> None:
         self._attr_unique_id = descriptor.unique_id_suffix
         self.entity_id = f"number.{descriptor.unique_id_suffix}"
-        self._attr_name = descriptor.name
+        self._attr_name = NAMES.get((descriptor.unique_id_suffix, language), NAMES[(descriptor.unique_id_suffix, LANG_EN)])
         self._attr_native_unit_of_measurement = unit
         self._attr_native_min_value = descriptor.min_value
         self._attr_native_max_value = descriptor.max_value

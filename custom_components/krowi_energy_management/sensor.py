@@ -26,6 +26,8 @@ from .const import (
     CONF_UNIT,
     DOMAIN,
     DOMAIN_TYPE_ELECTRICITY,
+    LANG_EN,
+    NAMES,
     UNIT_ELECTRICITY,
     UID_ELECTRICITY_DISTRIBUTION_TRANSPORT,
     UID_ELECTRICITY_ENERGY_CONTRIBUTION,
@@ -46,7 +48,7 @@ from .const import (
     UID_GAS_TRANSPORT,
     UID_GAS_VAT,
 )
-from .utils import apply_fx, convert_unit, safe_float_state
+from .utils import apply_fx, convert_unit, get_language, safe_float_state
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -67,6 +69,7 @@ async def async_setup_entry(
     domain_type = entry.data[CONF_DOMAIN_TYPE]
     unit = UNIT_ELECTRICITY if domain_type == DOMAIN_TYPE_ELECTRICITY else effective[CONF_UNIT]
     entry_id = entry.entry_id
+    language = get_language(hass)
 
     if domain_type == DOMAIN_TYPE_ELECTRICITY:
         device_info = DeviceInfo(
@@ -78,16 +81,16 @@ async def async_setup_entry(
         export_template_str = effective[CONF_EXPORT_TEMPLATE]
 
         entities = [
-            ElectricitySurchargeSensor(hass, entry_id, unit, device_info),
-            ElectricitySurchargeFormulaSensor(hass, entry_id, device_info),
+            ElectricitySurchargeSensor(hass, entry_id, unit, device_info, language),
+            ElectricitySurchargeFormulaSensor(hass, entry_id, unit, device_info, language),
             ElectricityImportPriceSensor(
-                hass, entry_id, unit, current_price_entity, fx_rate_entity, device_info
+                hass, entry_id, unit, current_price_entity, fx_rate_entity, device_info, language
             ),
             ElectricityExportPriceSensor(
-                hass, entry_id, unit, export_template_str, device_info
+                hass, entry_id, unit, export_template_str, device_info, language
             ),
-            ElectricityImportPriceEurSensor(hass, entry_id, device_info),
-            ElectricityExportPriceEurSensor(hass, entry_id, device_info),
+            ElectricityImportPriceEurSensor(hass, entry_id, device_info, language),
+            ElectricityExportPriceEurSensor(hass, entry_id, device_info, language),
         ]
     else:
         device_info = DeviceInfo(
@@ -97,8 +100,8 @@ async def async_setup_entry(
         current_price_entity = effective[CONF_CURRENT_PRICE_ENTITY]
 
         entities = [
-            GasSurchargeSensor(hass, entry_id, unit, device_info),
-            GasCurrentPriceSensor(hass, entry_id, unit, current_price_entity, device_info),
+            GasSurchargeSensor(hass, entry_id, unit, device_info, language),
+            GasCurrentPriceSensor(hass, entry_id, unit, current_price_entity, device_info, language),
         ]
 
     async_add_entities(entities)
@@ -154,11 +157,11 @@ class ElectricitySurchargeSensor(KrowiSensor):
 
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, hass, entry_id, unit, device_info):
+    def __init__(self, hass, entry_id, unit, device_info, language=LANG_EN):
         super().__init__(hass, entry_id, device_info)
         self._attr_unique_id = UID_ELECTRICITY_SURCHARGE_RATE
         self.entity_id = f"sensor.{UID_ELECTRICITY_SURCHARGE_RATE}"
-        self._attr_name = "Electricity surcharge rate"
+        self._attr_name = NAMES.get((UID_ELECTRICITY_SURCHARGE_RATE, language), NAMES[(UID_ELECTRICITY_SURCHARGE_RATE, LANG_EN)])
         self._attr_native_unit_of_measurement = unit
         self._attr_native_value = 0.0
 
@@ -210,12 +213,13 @@ class ElectricitySurchargeFormulaSensor(KrowiSensor):
     _attr_native_unit_of_measurement = None
     _attr_state_class = None
 
-    def __init__(self, hass, entry_id, device_info):
+    def __init__(self, hass, entry_id, unit, device_info, language=LANG_EN):
         super().__init__(hass, entry_id, device_info)
         self._attr_unique_id = UID_ELECTRICITY_SURCHARGE_FORMULA
         self.entity_id = f"sensor.{UID_ELECTRICITY_SURCHARGE_FORMULA}"
-        self._attr_name = "Electricity surcharge formula"
-        self._attr_native_value = "0.00000 + 0.00000 + 0.00000 + 0.00000 = 0.00000"
+        self._attr_name = NAMES.get((UID_ELECTRICITY_SURCHARGE_FORMULA, language), NAMES[(UID_ELECTRICITY_SURCHARGE_FORMULA, LANG_EN)])
+        self._unit = unit
+        self._attr_native_value = f"0.00000 + 0.00000 + 0.00000 + 0.00000 = 0.00000 {unit}"
 
     def _rate_entity_ids(self) -> list[str]:
         return [
@@ -251,7 +255,7 @@ class ElectricitySurchargeFormulaSensor(KrowiSensor):
 
         total = round(sum(values), 5)
         parts = " + ".join(f"{v:.5f}" for v in values)
-        self._attr_native_value = f"{parts} = {total:.5f}"
+        self._attr_native_value = f"{parts} = {total:.5f} {self._unit}"
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
@@ -268,11 +272,11 @@ class ElectricityImportPriceSensor(KrowiSensor):
 
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, hass, entry_id, unit, current_price_entity, fx_rate_entity, device_info):
+    def __init__(self, hass, entry_id, unit, current_price_entity, fx_rate_entity, device_info, language=LANG_EN):
         super().__init__(hass, entry_id, device_info)
         self._attr_unique_id = UID_ELECTRICITY_PRICE_IMPORT
         self.entity_id = f"sensor.{UID_ELECTRICITY_PRICE_IMPORT}"
-        self._attr_name = "Electricity import price"
+        self._attr_name = NAMES.get((UID_ELECTRICITY_PRICE_IMPORT, language), NAMES[(UID_ELECTRICITY_PRICE_IMPORT, LANG_EN)])
         self._attr_native_unit_of_measurement = unit
         self._unit = unit
         self._current_price_entity = current_price_entity
@@ -367,11 +371,11 @@ class ElectricityExportPriceSensor(KrowiSensor):
     _attr_state_class = SensorStateClass.MEASUREMENT
     _unsub_template = None
 
-    def __init__(self, hass, entry_id, unit, export_template_str, device_info):
+    def __init__(self, hass, entry_id, unit, export_template_str, device_info, language=LANG_EN):
         super().__init__(hass, entry_id, device_info)
         self._attr_unique_id = UID_ELECTRICITY_PRICE_EXPORT
         self.entity_id = f"sensor.{UID_ELECTRICITY_PRICE_EXPORT}"
-        self._attr_name = "Electricity export price"
+        self._attr_name = NAMES.get((UID_ELECTRICITY_PRICE_EXPORT, language), NAMES[(UID_ELECTRICITY_PRICE_EXPORT, LANG_EN)])
         self._attr_native_unit_of_measurement = unit
         self._template = Template(export_template_str, hass)
 
@@ -426,11 +430,11 @@ class ElectricityImportPriceEurSensor(KrowiSensor):
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = "EUR/kWh"
 
-    def __init__(self, hass, entry_id, device_info):
+    def __init__(self, hass, entry_id, device_info, language=LANG_EN):
         super().__init__(hass, entry_id, device_info)
         self._attr_unique_id = UID_ELECTRICITY_PRICE_IMPORT_EUR
         self.entity_id = f"sensor.{UID_ELECTRICITY_PRICE_IMPORT_EUR}"
-        self._attr_name = "Electricity import price (EUR/kWh)"
+        self._attr_name = NAMES.get((UID_ELECTRICITY_PRICE_IMPORT_EUR, language), NAMES[(UID_ELECTRICITY_PRICE_IMPORT_EUR, LANG_EN)])
 
     def _source_entity_id(self) -> str | None:
         return _resolve_entity_id(self.hass, "sensor", UID_ELECTRICITY_PRICE_IMPORT)
@@ -461,11 +465,11 @@ class ElectricityExportPriceEurSensor(KrowiSensor):
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = "EUR/kWh"
 
-    def __init__(self, hass, entry_id, device_info):
+    def __init__(self, hass, entry_id, device_info, language=LANG_EN):
         super().__init__(hass, entry_id, device_info)
         self._attr_unique_id = UID_ELECTRICITY_PRICE_EXPORT_EUR
         self.entity_id = f"sensor.{UID_ELECTRICITY_PRICE_EXPORT_EUR}"
-        self._attr_name = "Electricity export price (EUR/kWh)"
+        self._attr_name = NAMES.get((UID_ELECTRICITY_PRICE_EXPORT_EUR, language), NAMES[(UID_ELECTRICITY_PRICE_EXPORT_EUR, LANG_EN)])
 
     def _source_entity_id(self) -> str | None:
         return _resolve_entity_id(self.hass, "sensor", UID_ELECTRICITY_PRICE_EXPORT)
@@ -499,11 +503,11 @@ class GasSurchargeSensor(KrowiSensor):
 
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, hass, entry_id, unit, device_info):
+    def __init__(self, hass, entry_id, unit, device_info, language=LANG_EN):
         super().__init__(hass, entry_id, device_info)
         self._attr_unique_id = UID_GAS_SURCHARGE_RATE
         self.entity_id = f"sensor.{UID_GAS_SURCHARGE_RATE}"
-        self._attr_name = "Gas surcharge rate"
+        self._attr_name = NAMES.get((UID_GAS_SURCHARGE_RATE, language), NAMES[(UID_GAS_SURCHARGE_RATE, LANG_EN)])
         self._attr_native_unit_of_measurement = unit
         self._attr_native_value = 0.0
 
@@ -555,11 +559,11 @@ class GasCurrentPriceSensor(KrowiSensor):
 
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, hass, entry_id, unit, current_price_entity, device_info):
+    def __init__(self, hass, entry_id, unit, current_price_entity, device_info, language=LANG_EN):
         super().__init__(hass, entry_id, device_info)
         self._attr_unique_id = UID_GAS_PRICE
         self.entity_id = f"sensor.{UID_GAS_PRICE}"
-        self._attr_name = "Gas price"
+        self._attr_name = NAMES.get((UID_GAS_PRICE, language), NAMES[(UID_GAS_PRICE, LANG_EN)])
         self._attr_native_unit_of_measurement = unit
         self._unit = unit
         self._current_price_entity = current_price_entity

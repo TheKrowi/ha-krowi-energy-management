@@ -13,12 +13,16 @@ from .const import (
     CONF_DOMAIN_TYPE,
     CONF_EXPORT_TEMPLATE,
     CONF_FX_RATE_ENTITY,
+    CONF_LANGUAGE,
     CONF_UNIT,
     DEFAULT_ELECTRICITY_PRICE_ENTITY,
     DEFAULT_GAS_PRICE_ENTITY,
     DOMAIN,
     DOMAIN_TYPE_ELECTRICITY,
     DOMAIN_TYPE_GAS,
+    DOMAIN_TYPE_SETTINGS,
+    LANG_EN,
+    LANGUAGE_OPTIONS,
     UNIT_OPTIONS,
 )
 
@@ -69,7 +73,7 @@ class KrowiEnergyManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Show domain picker menu."""
         return self.async_show_menu(
             step_id="menu",
-            menu_options=[DOMAIN_TYPE_ELECTRICITY, DOMAIN_TYPE_GAS],
+            menu_options=[DOMAIN_TYPE_ELECTRICITY, DOMAIN_TYPE_GAS, DOMAIN_TYPE_SETTINGS],
         )
 
     async def async_step_electricity(self, user_input=None):
@@ -114,6 +118,30 @@ class KrowiEnergyManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             },
         )
 
+    async def async_step_settings(self, user_input=None):
+        """Handle settings entry setup."""
+        for entry in self._async_current_entries():
+            if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_SETTINGS:
+                return self.async_abort(reason="already_configured")
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id=DOMAIN_TYPE_SETTINGS,
+                data_schema=vol.Schema(
+                    {
+                        vol.Required(CONF_LANGUAGE, default=LANG_EN): vol.In(LANGUAGE_OPTIONS),
+                    }
+                ),
+            )
+
+        return self.async_create_entry(
+            title="Settings",
+            data={
+                CONF_DOMAIN_TYPE: DOMAIN_TYPE_SETTINGS,
+                **user_input,
+            },
+        )
+
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
@@ -132,7 +160,34 @@ class KrowiEnergyManagementOptionsFlow(config_entries.OptionsFlow):
         domain_type = self._entry.data.get(CONF_DOMAIN_TYPE)
         if domain_type == DOMAIN_TYPE_ELECTRICITY:
             return await self.async_step_electricity_options(user_input)
+        if domain_type == DOMAIN_TYPE_SETTINGS:
+            return await self.async_step_settings_options(user_input)
         return await self.async_step_gas_options(user_input)
+
+    async def async_step_settings_options(self, user_input=None):
+        """Settings options — change language."""
+        current = {**self._entry.data, **self._entry.options}
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id="settings_options",
+                data_schema=vol.Schema(
+                    {
+                        vol.Required(
+                            CONF_LANGUAGE, default=current.get(CONF_LANGUAGE, LANG_EN)
+                        ): vol.In(LANGUAGE_OPTIONS),
+                    }
+                ),
+            )
+
+        # Reload all domain entries so they pick up the new language
+        result = self.async_create_entry(title="", data=user_input)
+        for entry in self.hass.config_entries.async_entries(DOMAIN):
+            if entry.data.get(CONF_DOMAIN_TYPE) in (DOMAIN_TYPE_ELECTRICITY, DOMAIN_TYPE_GAS):
+                self.hass.async_create_task(
+                    self.hass.config_entries.async_reload(entry.entry_id)
+                )
+        return result
 
     async def async_step_electricity_options(self, user_input=None):
         """Electricity options — pre-populated with current values."""

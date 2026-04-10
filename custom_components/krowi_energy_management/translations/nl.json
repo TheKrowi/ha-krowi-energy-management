@@ -1,0 +1,40 @@
+{
+  "config": {
+    "step": {
+      "menu": {
+        "title": "Krowi Energiebeheer",
+        "description": "Selecteer het energiedomein om te configureren.",
+        "menu_options": {
+          "electricity": "Elektriciteit",
+          "gas": "Gas",
+          "settings": "Instellingen"
+        }
+      },
+      "settings": {
+        "title": "Instellingen",
+        "data": {
+          "language": "Taal"
+        },
+        "data_description": {
+          "language": "Taal voor de weergavenamen van entiteiten."
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Dit energiedomein is al geconfigureerd."
+    }
+  },
+  "options": {
+    "step": {
+      "settings_options": {
+        "title": "Instellingen",
+        "data": {
+          "language": "Taal"
+        },
+        "data_description": {
+          "language": "Taal voor de weergavenamen van entiteiten. Wijzigingen worden toegepast na herladen."
+        }
+      }
+    }
+  }
+}

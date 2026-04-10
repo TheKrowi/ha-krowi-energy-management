@@ -90,3 +90,12 @@ def safe_float_state(hass, entity_id: str) -> float | None:
         return float(state.state)
     except (ValueError, TypeError):
         return None
+
+
+def get_language(hass) -> str:
+    """Return the configured language from the settings entry, defaulting to 'en'."""
+    from .const import CONF_DOMAIN_TYPE, CONF_LANGUAGE, DOMAIN, DOMAIN_TYPE_SETTINGS, LANG_EN  # noqa: PLC0415
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_SETTINGS:
+            return entry.options.get(CONF_LANGUAGE) or entry.data.get(CONF_LANGUAGE, LANG_EN)
+    return LANG_EN

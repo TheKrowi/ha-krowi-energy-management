@@ -1,10 +1,4 @@
-# Spec: gas-sensors
-
-## Purpose
-
-Defines the computed gas sensor entities: total surcharge rate and current gas price.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Gas total surcharge rate sensor
 The component SHALL expose a sensor with unique ID `gas_tariff_total_surcharge` and English display name "Total surcharge" that reports the sum of the four gas tariff rate number entities (excluding VAT).
@@ -66,4 +60,4 @@ The device identifier SHALL be `(DOMAIN, f"{entry_id}_gas")`.
 
 #### Scenario: Gas sensors belong to Gas device
 - **WHEN** the component is loaded
-- **THEN** all two gas sensor entities SHALL be associated with the device identified by `(DOMAIN, entry_id + "_gas")`
+- **THEN** all gas sensor entities SHALL be associated with the device identified by `(DOMAIN, entry_id + "_gas")`

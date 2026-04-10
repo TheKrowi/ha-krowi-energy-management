@@ -6,7 +6,8 @@
         "description": "Select the energy domain to configure.",
         "menu_options": {
           "electricity": "Electricity",
-          "gas": "Gas"
+          "gas": "Gas",
+          "settings": "Settings"
         }
       },
       "electricity": {
@@ -30,6 +31,15 @@
         },
         "data_description": {
           "current_price_entity": "Entity ID of your gas price source (e.g. TTF DAM 30-day average sensor)."
+        }
+      },
+      "settings": {
+        "title": "Settings",
+        "data": {
+          "language": "Language"
+        },
+        "data_description": {
+          "language": "Language used for entity display names."
         }
       }
     },
@@ -62,6 +72,15 @@
           "unit": "Changing the unit does not rescale existing tariff values.",
           "current_price_entity": "Entity ID of your gas price source."
         }
+      },
+      "settings_options": {
+        "title": "Settings",
+        "data": {
+          "language": "Language"
+        },
+        "data_description": {
+          "language": "Language used for entity display names. Changes apply after reload."
+        }
       }
     }
   },
@@ -73,26 +92,26 @@
   },
   "entity": {
     "number": {
-      "electricity_green_energy_contribution_rate": {"name": "Groene stroom bijdrage"},
-      "electricity_distribution_transport_rate": {"name": "Distributie & transport"},
-      "electricity_excise_duty_rate": {"name": "Bijzondere accijns"},
-      "electricity_energy_contribution_rate": {"name": "Energiebijdrage"},
-      "electricity_vat_rate": {"name": "BTW elektriciteit"},
-      "gas_distribution_rate": {"name": "Gas distributie"},
-      "gas_transport_rate": {"name": "Gas transport (Fluxys)"},
-      "gas_excise_duty_rate": {"name": "Gas bijzondere accijns"},
-      "gas_energy_contribution_rate": {"name": "Gas energiebijdrage"},
-      "gas_vat_rate": {"name": "Gas BTW"}
+      "electricity_tariff_green_energy_contribution": {"name": "Groene stroom bijdrage"},
+      "electricity_tariff_distribution_transport": {"name": "Distributie & transport"},
+      "electricity_tariff_excise_duty": {"name": "Bijzondere accijns"},
+      "electricity_tariff_energy_contribution": {"name": "Energiebijdrage"},
+      "electricity_vat": {"name": "BTW elektriciteit"},
+      "gas_tariff_distribution": {"name": "Gas distributie"},
+      "gas_tariff_transport": {"name": "Gas transport (Fluxys)"},
+      "gas_tariff_excise_duty": {"name": "Gas bijzondere accijns"},
+      "gas_tariff_energy_contribution": {"name": "Gas energiebijdrage"},
+      "gas_vat": {"name": "Gas BTW"}
     },
     "sensor": {
-      "electricity_surcharge_rate": {"name": "Electricity surcharge rate"},
-      "electricity_surcharge_formula": {"name": "Electricity surcharge formula"},
-      "electricity_price_import": {"name": "Electricity import price"},
-      "electricity_price_export": {"name": "Electricity export price"},
-      "electricity_price_import_eur": {"name": "Electricity import price (EUR/kWh)"},
-      "electricity_price_export_eur": {"name": "Electricity export price (EUR/kWh)"},
-      "gas_surcharge_rate": {"name": "Gas surcharge rate"},
-      "gas_price": {"name": "Gas price"}
+      "electricity_tariff_total_surcharge": {"name": "Total surcharge"},
+      "electricity_tariff_total_surcharge_formula": {"name": "Total surcharge formula"},
+      "electricity_current_price_import": {"name": "Current import price"},
+      "electricity_current_price_export": {"name": "Current export price"},
+      "electricity_current_price_import_eur": {"name": "Current import price (EUR/kWh)"},
+      "electricity_current_price_export_eur": {"name": "Current export price (EUR/kWh)"},
+      "gas_tariff_total_surcharge": {"name": "Total surcharge"},
+      "gas_current_price": {"name": "Current price"}
     }
   }
 }
