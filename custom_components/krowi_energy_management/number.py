@@ -72,11 +72,13 @@ async def async_setup_entry(
         descriptors = _ELECTRICITY_DESCRIPTORS
         device_suffix = "electricity"
         device_name = "Electricity"
-    else:
+    elif domain_type == DOMAIN_TYPE_GAS:
         unit = GAS_UNIT
         descriptors = _GAS_DESCRIPTORS
         device_suffix = "gas"
         device_name = "Gas"
+    else:
+        return
 
     device_info = DeviceInfo(
         identifiers={(DOMAIN, f"{entry.entry_id}_{device_suffix}")},

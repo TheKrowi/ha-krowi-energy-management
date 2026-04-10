@@ -102,7 +102,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await store.async_start(hass)
         hass.data.setdefault(DOMAIN, {})["ttf_dam_store"] = store
 
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    if entry.data.get(CONF_DOMAIN_TYPE) in (DOMAIN_TYPE_ELECTRICITY, DOMAIN_TYPE_GAS):
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 
@@ -134,4 +135,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Clear the Repairs issue
     async_delete_issue(hass, DOMAIN, f"entity_renamed_{entry.entry_id}")
 
+    if entry.data.get(CONF_DOMAIN_TYPE) not in (DOMAIN_TYPE_ELECTRICITY, DOMAIN_TYPE_GAS):
+        return True
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)

@@ -24,6 +24,7 @@ from .const import (
     CONF_EXPORT_TEMPLATE,
     DOMAIN,
     DOMAIN_TYPE_ELECTRICITY,
+    DOMAIN_TYPE_GAS,
     GAS_UNIT,
     LANG_EN,
     NAMES,
@@ -97,7 +98,7 @@ async def async_setup_entry(
             ElectricityImportPriceEurSensor(hass, entry_id, device_info, language),
             ElectricityExportPriceEurSensor(hass, entry_id, device_info, language),
         ]
-    else:
+    elif domain_type == DOMAIN_TYPE_GAS:
         device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{entry_id}_gas")},
             name="Gas",
@@ -111,6 +112,8 @@ async def async_setup_entry(
             GasCurrentPriceSensor(hass, entry_id, device_info, language),
             GasCurrentPriceEurSensor(hass, entry_id, device_info, language),
         ]
+    else:
+        return
 
     async_add_entities(entities)
 
