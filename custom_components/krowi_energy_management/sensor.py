@@ -4,19 +4,19 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity, SensorStateClass
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import STATE_UNAVAILABLE
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.event import (
+from homeassistant.components.sensor import SensorEntity, SensorStateClass # type: ignore
+from homeassistant.config_entries import ConfigEntry # type: ignore
+from homeassistant.const import STATE_UNAVAILABLE # type: ignore
+from homeassistant.core import HomeAssistant, callback # type: ignore
+from homeassistant.helpers import entity_registry as er # type: ignore
+from homeassistant.helpers.device_registry import DeviceInfo # type: ignore
+from homeassistant.helpers.entity_platform import AddEntitiesCallback # type: ignore
+from homeassistant.helpers.event import ( # type: ignore
     TrackTemplate,
     async_track_state_change_event,
     async_track_template_result,
 )
-from homeassistant.helpers.template import Template
+from homeassistant.helpers.template import Template # type: ignore
 
 from .const import (
     CONF_CURRENT_PRICE_ENTITY,
@@ -60,8 +60,9 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up sensor entities for this config entry."""
+    effective = {**entry.data, **entry.options}
     domain_type = entry.data[CONF_DOMAIN_TYPE]
-    unit = entry.data[CONF_UNIT]
+    unit = effective[CONF_UNIT]
     entry_id = entry.entry_id
 
     if domain_type == DOMAIN_TYPE_ELECTRICITY:
@@ -69,9 +70,9 @@ async def async_setup_entry(
             identifiers={(DOMAIN, f"{entry_id}_electricity")},
             name="Electricity",
         )
-        current_price_entity = entry.data[CONF_CURRENT_PRICE_ENTITY]
-        fx_rate_entity = entry.data.get(CONF_FX_RATE_ENTITY, "")
-        export_template_str = entry.data[CONF_EXPORT_TEMPLATE]
+        current_price_entity = effective[CONF_CURRENT_PRICE_ENTITY]
+        fx_rate_entity = effective.get(CONF_FX_RATE_ENTITY) or ""
+        export_template_str = effective[CONF_EXPORT_TEMPLATE]
 
         entities = [
             ElectricitySurchargeSensor(hass, entry_id, unit, device_info),
@@ -88,7 +89,7 @@ async def async_setup_entry(
             identifiers={(DOMAIN, f"{entry_id}_gas")},
             name="Gas",
         )
-        current_price_entity = entry.data[CONF_CURRENT_PRICE_ENTITY]
+        current_price_entity = effective[CONF_CURRENT_PRICE_ENTITY]
 
         entities = [
             GasSurchargeSensor(hass, entry_id, unit, device_info),

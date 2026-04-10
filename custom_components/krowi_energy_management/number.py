@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from homeassistant.components.number import NumberEntity, NumberMode, RestoreNumber
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.components.number import NumberEntity, NumberMode, RestoreNumber # type: ignore
+from homeassistant.config_entries import ConfigEntry # type: ignore
+from homeassistant.core import HomeAssistant # type: ignore
+from homeassistant.helpers.device_registry import DeviceInfo # type: ignore
+from homeassistant.helpers.entity_platform import AddEntitiesCallback # type: ignore
 
 from .const import (
     CONF_DOMAIN_TYPE,
@@ -61,8 +61,9 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up number entities for this config entry."""
+    effective = {**entry.data, **entry.options}
     domain_type = entry.data[CONF_DOMAIN_TYPE]
-    unit = entry.data[CONF_UNIT]
+    unit = effective[CONF_UNIT]
 
     if domain_type == DOMAIN_TYPE_ELECTRICITY:
         descriptors = _ELECTRICITY_DESCRIPTORS

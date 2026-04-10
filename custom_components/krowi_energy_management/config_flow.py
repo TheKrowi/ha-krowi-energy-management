@@ -1,12 +1,12 @@
 """Config flow for Krowi Energy Management."""
 from __future__ import annotations
 
-import voluptuous as vol
-from homeassistant import config_entries
-from homeassistant.components import repairs as ir
-from homeassistant.const import EVENT_HOMEASSISTANT_STOP
-from homeassistant.core import callback
-from homeassistant.helpers import entity_registry as er
+import voluptuous as vol # type: ignore
+from homeassistant import config_entries # type: ignore
+from homeassistant.components import repairs as ir # type: ignore
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP # type: ignore
+from homeassistant.core import callback # type: ignore
+from homeassistant.helpers import entity_registry as er, selector # type: ignore
 
 from .const import (
     CONF_CURRENT_PRICE_ENTITY,
@@ -31,8 +31,8 @@ def _electricity_schema(defaults: dict | None = None) -> vol.Schema:
             vol.Required(
                 CONF_CURRENT_PRICE_ENTITY,
                 default=d.get(CONF_CURRENT_PRICE_ENTITY, DEFAULT_ELECTRICITY_PRICE_ENTITY),
-            ): str,
-            vol.Optional(CONF_FX_RATE_ENTITY, default=d.get(CONF_FX_RATE_ENTITY, "")): str,
+            ): selector.EntitySelector(),
+            vol.Optional(CONF_FX_RATE_ENTITY): selector.EntitySelector(),
             vol.Required(
                 CONF_EXPORT_TEMPLATE,
                 default=d.get(
@@ -52,7 +52,7 @@ def _gas_schema(defaults: dict | None = None) -> vol.Schema:
             vol.Required(
                 CONF_CURRENT_PRICE_ENTITY,
                 default=d.get(CONF_CURRENT_PRICE_ENTITY, DEFAULT_GAS_PRICE_ENTITY),
-            ): str,
+            ): selector.EntitySelector(),
         }
     )
 
