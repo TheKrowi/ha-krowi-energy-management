@@ -782,7 +782,7 @@ class GasCurrentPriceSensor(KrowiSensor):
     def _subscribe_listeners(self) -> None:
         watch = []
 
-        spot_id = _resolve_entity_id(self.hass, "sensor", UID_GAS_SPOT_TODAY_PRICE)
+        spot_id = _resolve_entity_id(self.hass, "sensor", UID_GAS_SPOT_AVERAGE_PRICE)
         if spot_id:
             watch.append(spot_id)
 
@@ -802,7 +802,7 @@ class GasCurrentPriceSensor(KrowiSensor):
         self._update()
 
     def _update(self) -> None:
-        spot_id = _resolve_entity_id(self.hass, "sensor", UID_GAS_SPOT_TODAY_PRICE)
+        spot_id = _resolve_entity_id(self.hass, "sensor", UID_GAS_SPOT_AVERAGE_PRICE)
         spot_state = self.hass.states.get(spot_id) if spot_id else None
         if spot_state is None or spot_state.state in ("unavailable", "unknown"):
             self._attr_native_value = None
