@@ -11,7 +11,7 @@ The component SHALL expose a sensor with unique ID `gas_tariff_total_surcharge` 
 
 Formula: `distribution + transport + excise_duty + energy_contribution`
 
-`unit_of_measurement` SHALL equal `gas_unit`. `state_class` SHALL be `measurement`. Value SHALL be rounded to 5 decimal places.
+`unit_of_measurement` SHALL be `"c€/kWh"`. `state_class` SHALL be `measurement`. Value SHALL be rounded to 5 decimal places.
 
 #### Scenario: Gas surcharge updates when any rate entity changes
 - **WHEN** any of the four contributing gas tariff entities changes state
@@ -27,35 +27,28 @@ Formula: `distribution + transport + excise_duty + energy_contribution`
 ### Requirement: Gas current price sensor
 The component SHALL expose a sensor with unique ID `gas_current_price` and English display name "Current price" that computes the current gas price.
 
-Formula: `(current_price + surcharge) * (1 + vat / 100)`, rounded to 5 decimal places.
+Formula: `(spot_price + surcharge) * (1 + vat / 100)`, rounded to 5 decimal places.
 
 Where:
-- `current_price` is the state of the configured `current_price_entity`, read dynamically and auto-converted to `gas_unit` based on the entity's `unit_of_measurement` attribute
-- `surcharge` is the state of `gas_tariff_total_surcharge`
+- `spot_price` is the state of `gas_spot_today_price` (always `c€/kWh`)
+- `surcharge` is the state of `gas_tariff_total_surcharge` (always `c€/kWh`)
 - `vat` is the state of `gas_vat` (in %)
 
-`unit_of_measurement` SHALL equal `gas_unit`. `state_class` SHALL be `measurement`.
+`unit_of_measurement` SHALL be `"c€/kWh"`. `state_class` SHALL be `measurement`.
+
+The sensor SHALL track state changes on `gas_spot_today_price`, `gas_tariff_total_surcharge`, and `gas_vat`.
 
 #### Scenario: Gas price computed correctly
-- **WHEN** TTF DAM reports `52.90` €/MWh, `gas_unit` is `€/MWh`, gas surcharge is `5.50` €/MWh, VAT is `21.0%`
-- **THEN** gas price SHALL be `(52.90 + 5.50) * 1.21 = 70.664` rounded to 5 decimal places = `"70.66400"`
+- **WHEN** `gas_spot_today_price` is `4.543` (c€/kWh), gas surcharge is `0.55` (c€/kWh), VAT is `21.0%`
+- **THEN** gas price SHALL be `(4.543 + 0.55) * 1.21 = 6.16253` (rounded to 5 decimal places)
 
-#### Scenario: Current price entity auto-converted from MWh to kWh
-- **WHEN** `current_price_entity` reports in `€/MWh` and `gas_unit` is `€/kWh`
-- **THEN** the source value SHALL be divided by `1000` before applying the formula
-
-#### Scenario: Current price entity auto-converted from kWh to MWh
-- **WHEN** `current_price_entity` reports in `€/kWh` and `gas_unit` is `€/MWh`
-- **THEN** the source value SHALL be multiplied by `1000` before applying the formula
-
-#### Scenario: Gas price is unavailable when current price entity is unavailable
-- **WHEN** the configured `current_price_entity` is missing or `unavailable`/`unknown`
+#### Scenario: Gas price is unavailable when spot price is unavailable
+- **WHEN** `gas_spot_today_price` is `unavailable` or `unknown`
 - **THEN** `gas_current_price` state SHALL be `unavailable`
 
-#### Scenario: Current price entity unit not recognised
-- **WHEN** the `current_price_entity`'s `unit_of_measurement` attribute cannot be matched to a known unit
-- **THEN** `gas_current_price` SHALL be set to `unavailable`
-- **THEN** a warning SHALL be logged indicating the unrecognised unit
+#### Scenario: Gas price updates when spot price changes
+- **WHEN** `gas_spot_today_price` changes after a daily store refresh
+- **THEN** `gas_current_price` SHALL recompute immediately
 
 ---
 
@@ -64,7 +57,7 @@ All gas sensor entities SHALL return a `DeviceInfo` that places them under the s
 
 The device identifier SHALL be `(DOMAIN, f"{entry_id}_gas")`.
 
-All **four** gas sensor entities (`gas_tariff_total_surcharge`, `gas_tariff_total_surcharge_formula`, `gas_current_price`, `gas_current_price_eur`) SHALL be associated with this device.
+All gas sensor entities (`gas_tariff_total_surcharge`, `gas_tariff_total_surcharge_formula`, `gas_current_price`, `gas_current_price_eur`, `gas_spot_today_price`, `gas_spot_average_price`) SHALL be associated with this device.
 
 #### Scenario: Gas sensors belong to Gas device
 - **WHEN** the component is loaded

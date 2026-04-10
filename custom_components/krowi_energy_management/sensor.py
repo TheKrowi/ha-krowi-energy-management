@@ -20,15 +20,15 @@ from homeassistant.helpers.event import ( # type: ignore
 from homeassistant.helpers.template import Template # type: ignore
 
 from .const import (
-    CONF_CURRENT_PRICE_ENTITY,
     CONF_DOMAIN_TYPE,
     CONF_EXPORT_TEMPLATE,
-    CONF_UNIT,
     DOMAIN,
     DOMAIN_TYPE_ELECTRICITY,
+    GAS_UNIT,
     LANG_EN,
     NAMES,
     SIGNAL_NORDPOOL_UPDATE,
+    SIGNAL_TTF_DAM_UPDATE,
     UNIT_ELECTRICITY,
     UID_ELECTRICITY_DISTRIBUTION_TRANSPORT,
     UID_ELECTRICITY_ENERGY_CONTRIBUTION,
@@ -48,12 +48,14 @@ from .const import (
     UID_GAS_EXCISE_DUTY,
     UID_GAS_PRICE,
     UID_GAS_PRICE_EUR,
+    UID_GAS_SPOT_AVERAGE_PRICE,
+    UID_GAS_SPOT_TODAY_PRICE,
     UID_GAS_SURCHARGE_FORMULA,
     UID_GAS_SURCHARGE_RATE,
     UID_GAS_TRANSPORT,
     UID_GAS_VAT,
 )
-from .utils import convert_unit, get_language, safe_float_state
+from .utils import get_language, safe_float_state
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -72,7 +74,7 @@ async def async_setup_entry(
     """Set up sensor entities for this config entry."""
     effective = {**entry.data, **entry.options}
     domain_type = entry.data[CONF_DOMAIN_TYPE]
-    unit = UNIT_ELECTRICITY if domain_type == DOMAIN_TYPE_ELECTRICITY else effective[CONF_UNIT]
+    unit = UNIT_ELECTRICITY
     entry_id = entry.entry_id
     language = get_language(hass)
 
@@ -100,13 +102,14 @@ async def async_setup_entry(
             identifiers={(DOMAIN, f"{entry_id}_gas")},
             name="Gas",
         )
-        current_price_entity = effective[CONF_CURRENT_PRICE_ENTITY]
 
         entities = [
-            GasSurchargeSensor(hass, entry_id, unit, device_info, language),
-            GasSurchargeFormulaSensor(hass, entry_id, unit, device_info, language),
-            GasCurrentPriceSensor(hass, entry_id, unit, current_price_entity, device_info, language),
-            GasCurrentPriceEurSensor(hass, entry_id, unit, device_info, language),
+            GasSpotTodayPriceSensor(hass, entry_id, device_info, language),
+            GasSpotAverageSensor(hass, entry_id, device_info, language),
+            GasSurchargeSensor(hass, entry_id, GAS_UNIT, device_info, language),
+            GasSurchargeFormulaSensor(hass, entry_id, GAS_UNIT, device_info, language),
+            GasCurrentPriceSensor(hass, entry_id, device_info, language),
+            GasCurrentPriceEurSensor(hass, entry_id, device_info, language),
         ]
 
     async_add_entities(entities)
@@ -565,6 +568,86 @@ class ElectricityExportPriceEurSensor(KrowiSensor):
 
 
 # ---------------------------------------------------------------------------
+# Gas spot price sensors (TTF DAM, sourced from TtfDamStore)
+# ---------------------------------------------------------------------------
+
+class GasSpotTodayPriceSensor(KrowiSensor):
+    """Latest daily TTF DAM price in c€/kWh."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = GAS_UNIT
+    _attr_device_class = None
+
+    def __init__(self, hass, entry_id, device_info, language=LANG_EN):
+        super().__init__(hass, entry_id, device_info)
+        self._attr_unique_id = UID_GAS_SPOT_TODAY_PRICE
+        self.entity_id = f"sensor.{UID_GAS_SPOT_TODAY_PRICE}"
+        self._attr_name = NAMES.get(
+            (UID_GAS_SPOT_TODAY_PRICE, language),
+            NAMES[(UID_GAS_SPOT_TODAY_PRICE, LANG_EN)],
+        )
+
+    def _get_store(self):
+        return self.hass.data.get(DOMAIN, {}).get("ttf_dam_store")
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._unsub_listeners.append(
+            async_dispatcher_connect(self.hass, SIGNAL_TTF_DAM_UPDATE, self._on_update)
+        )
+        self._on_update()
+
+    @callback
+    def _on_update(self) -> None:
+        store = self._get_store()
+        if store is None or store.today_price is None:
+            self._attr_native_value = None
+            self._attr_available = False
+        else:
+            self._attr_native_value = store.today_price
+            self._attr_available = True
+        self.async_write_ha_state()
+
+
+class GasSpotAverageSensor(KrowiSensor):
+    """30-day average TTF DAM price in c€/kWh."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = GAS_UNIT
+    _attr_device_class = None
+
+    def __init__(self, hass, entry_id, device_info, language=LANG_EN):
+        super().__init__(hass, entry_id, device_info)
+        self._attr_unique_id = UID_GAS_SPOT_AVERAGE_PRICE
+        self.entity_id = f"sensor.{UID_GAS_SPOT_AVERAGE_PRICE}"
+        self._attr_name = NAMES.get(
+            (UID_GAS_SPOT_AVERAGE_PRICE, language),
+            NAMES[(UID_GAS_SPOT_AVERAGE_PRICE, LANG_EN)],
+        )
+
+    def _get_store(self):
+        return self.hass.data.get(DOMAIN, {}).get("ttf_dam_store")
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._unsub_listeners.append(
+            async_dispatcher_connect(self.hass, SIGNAL_TTF_DAM_UPDATE, self._on_update)
+        )
+        self._on_update()
+
+    @callback
+    def _on_update(self) -> None:
+        store = self._get_store()
+        if store is None or store.average is None:
+            self._attr_native_value = None
+            self._attr_available = False
+        else:
+            self._attr_native_value = store.average
+            self._attr_available = True
+        self.async_write_ha_state()
+
+
+# ---------------------------------------------------------------------------
 # Gas surcharge sensor
 # ---------------------------------------------------------------------------
 
@@ -685,21 +768,23 @@ class GasSurchargeFormulaSensor(KrowiSensor):
 # ---------------------------------------------------------------------------
 
 class GasCurrentPriceSensor(KrowiSensor):
-    """Gas price: (current_price_converted + surcharge) * (1 + vat/100)."""
+    """Gas price: (spot_price + surcharge) * (1 + vat/100), always in c€/kWh."""
 
     _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = GAS_UNIT
 
-    def __init__(self, hass, entry_id, unit, current_price_entity, device_info, language=LANG_EN):
+    def __init__(self, hass, entry_id, device_info, language=LANG_EN):
         super().__init__(hass, entry_id, device_info)
         self._attr_unique_id = UID_GAS_PRICE
         self.entity_id = f"sensor.{UID_GAS_PRICE}"
         self._attr_name = NAMES.get((UID_GAS_PRICE, language), NAMES[(UID_GAS_PRICE, LANG_EN)])
-        self._attr_native_unit_of_measurement = unit
-        self._unit = unit
-        self._current_price_entity = current_price_entity
 
     def _subscribe_listeners(self) -> None:
-        watch = [self._current_price_entity]
+        watch = []
+
+        spot_id = _resolve_entity_id(self.hass, "sensor", UID_GAS_SPOT_TODAY_PRICE)
+        if spot_id:
+            watch.append(spot_id)
 
         surcharge_id = _resolve_entity_id(self.hass, "sensor", UID_GAS_SURCHARGE_RATE)
         if surcharge_id:
@@ -717,28 +802,17 @@ class GasCurrentPriceSensor(KrowiSensor):
         self._update()
 
     def _update(self) -> None:
-        price_state = self.hass.states.get(self._current_price_entity)
-        if price_state is None or price_state.state in ("unavailable", "unknown"):
-            _LOGGER.warning(
-                "krowi_energy_management: gas price entity '%s' unavailable",
-                self._current_price_entity,
-            )
+        spot_id = _resolve_entity_id(self.hass, "sensor", UID_GAS_SPOT_TODAY_PRICE)
+        spot_state = self.hass.states.get(spot_id) if spot_id else None
+        if spot_state is None or spot_state.state in ("unavailable", "unknown"):
             self._attr_native_value = None
             self._attr_available = False
             self.async_write_ha_state()
             return
 
         try:
-            raw_price = float(price_state.state)
+            spot_price = float(spot_state.state)
         except (ValueError, TypeError):
-            self._attr_native_value = None
-            self._attr_available = False
-            self.async_write_ha_state()
-            return
-
-        source_unit = price_state.attributes.get("unit_of_measurement", "")
-        converted = convert_unit(raw_price, source_unit, self._unit)
-        if converted is None:
             self._attr_native_value = None
             self._attr_available = False
             self.async_write_ha_state()
@@ -754,7 +828,7 @@ class GasCurrentPriceSensor(KrowiSensor):
         if vat is None:
             vat = 0.0
 
-        result = (converted + surcharge) * (1 + vat / 100)
+        result = (spot_price + surcharge) * (1 + vat / 100)
         self._attr_native_value = round(result, 5)
         self._attr_available = True
         self.async_write_ha_state()
@@ -769,17 +843,16 @@ class GasCurrentPriceSensor(KrowiSensor):
 # ---------------------------------------------------------------------------
 
 class GasCurrentPriceEurSensor(KrowiSensor):
-    """Gas current price in EUR/kWh, derived from gas_current_price via convert_unit."""
+    """Gas current price in EUR/kWh (gas_current_price ÷ 100, always c€/kWh source)."""
 
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = "EUR/kWh"
 
-    def __init__(self, hass, entry_id, gas_unit, device_info, language=LANG_EN):
+    def __init__(self, hass, entry_id, device_info, language=LANG_EN):
         super().__init__(hass, entry_id, device_info)
         self._attr_unique_id = UID_GAS_PRICE_EUR
         self.entity_id = f"sensor.{UID_GAS_PRICE_EUR}"
         self._attr_name = NAMES.get((UID_GAS_PRICE_EUR, language), NAMES[(UID_GAS_PRICE_EUR, LANG_EN)])
-        self._gas_unit = gas_unit
 
     def _source_entity_id(self) -> str | None:
         return _resolve_entity_id(self.hass, "sensor", UID_GAS_PRICE)
@@ -796,12 +869,7 @@ class GasCurrentPriceEurSensor(KrowiSensor):
     def _update(self) -> None:
         source_id = self._source_entity_id()
         value = safe_float_state(self.hass, source_id) if source_id else None
-        if value is None:
-            self._attr_native_value = None
-            self.async_write_ha_state()
-            return
-        converted = convert_unit(value, self._gas_unit, "EUR/kWh")
-        self._attr_native_value = round(converted, 5) if converted is not None else None
+        self._attr_native_value = round(value / 100, 5) if value is not None else None
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:

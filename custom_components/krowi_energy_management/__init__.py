@@ -10,36 +10,46 @@ from homeassistant.helpers import entity_registry as er # type: ignore
 from homeassistant.helpers.issue_registry import IssueSeverity, async_create_issue, async_delete_issue # type: ignore
 
 from .const import (
-    CONF_CURRENT_PRICE_ENTITY,
     CONF_DOMAIN_TYPE,
     CONF_FX_RATE_ENTITY,
     CONF_LOW_PRICE_CUTOFF,
-    CONF_UNIT,
     DEFAULT_LOW_PRICE_CUTOFF,
     DOMAIN,
     DOMAIN_TYPE_ELECTRICITY,
+    DOMAIN_TYPE_GAS,
 )
 from .nordpool_store import NordpoolBeStore
+from .ttf_dam_store import TtfDamStore
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [Platform.NUMBER, Platform.SENSOR]
+
+VERSION = 3
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate config entries from older versions."""
     _LOGGER.debug("Migrating config entry '%s' from version %s", entry.entry_id, entry.version)
 
-    if entry.version > 2:
+    if entry.version > VERSION:
         return False
 
     if entry.version == 1:
         new_data = dict(entry.data)
         if new_data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_ELECTRICITY:
-            for key in (CONF_CURRENT_PRICE_ENTITY, CONF_FX_RATE_ENTITY, CONF_UNIT):
+            for key in (CONF_FX_RATE_ENTITY, "unit", "current_price_entity"):
                 new_data.pop(key, None)
         hass.config_entries.async_update_entry(entry, data=new_data, version=2)
         _LOGGER.info("Migrated config entry '%s' to version 2", entry.entry_id)
+
+    if entry.version == 2:
+        new_data = dict(entry.data)
+        if new_data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_GAS:
+            new_data.pop("unit", None)
+            new_data.pop("current_price_entity", None)
+        hass.config_entries.async_update_entry(entry, data=new_data, version=3)
+        _LOGGER.info("Migrated config entry '%s' to version 3", entry.entry_id)
 
     return True
 
@@ -86,6 +96,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await store.async_start(hass, low_price_cutoff)
         hass.data.setdefault(DOMAIN, {})["nordpool_store"] = store
 
+    # For gas entries, start the TTF DAM store before platform setup
+    if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_GAS:
+        store = TtfDamStore()
+        await store.async_start(hass)
+        hass.data.setdefault(DOMAIN, {})["ttf_dam_store"] = store
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
@@ -101,6 +117,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Stop the Nord Pool store for electricity entries
     if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_ELECTRICITY:
         store = hass.data.get(DOMAIN, {}).pop("nordpool_store", None)
+        if store:
+            await store.async_stop()
+
+    # Stop the TTF DAM store for gas entries
+    if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_GAS:
+        store = hass.data.get(DOMAIN, {}).pop("ttf_dam_store", None)
         if store:
             await store.async_stop()
 

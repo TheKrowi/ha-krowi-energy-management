@@ -9,13 +9,10 @@ from homeassistant.core import callback # type: ignore
 from homeassistant.helpers import entity_registry as er, selector # type: ignore
 
 from .const import (
-    CONF_CURRENT_PRICE_ENTITY,
     CONF_DOMAIN_TYPE,
     CONF_EXPORT_TEMPLATE,
     CONF_LANGUAGE,
     CONF_LOW_PRICE_CUTOFF,
-    CONF_UNIT,
-    DEFAULT_GAS_PRICE_ENTITY,
     DEFAULT_LOW_PRICE_CUTOFF,
     DOMAIN,
     DOMAIN_TYPE_ELECTRICITY,
@@ -23,7 +20,6 @@ from .const import (
     DOMAIN_TYPE_SETTINGS,
     LANG_EN,
     LANGUAGE_OPTIONS,
-    UNIT_OPTIONS,
 )
 
 
@@ -69,22 +65,13 @@ def _electricity_options_schema(defaults: dict | None = None) -> vol.Schema:
 
 
 def _gas_schema(defaults: dict | None = None) -> vol.Schema:
-    d = defaults or {}
-    return vol.Schema(
-        {
-            vol.Required(CONF_UNIT, default=d.get(CONF_UNIT, UNIT_OPTIONS[2])): vol.In(UNIT_OPTIONS),
-            vol.Required(
-                CONF_CURRENT_PRICE_ENTITY,
-                default=d.get(CONF_CURRENT_PRICE_ENTITY, DEFAULT_GAS_PRICE_ENTITY),
-            ): selector.EntitySelector(),
-        }
-    )
+    return vol.Schema({})
 
 
 class KrowiEnergyManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for Krowi Energy Management."""
 
-    VERSION = 2
+    VERSION = 3
 
     async def async_step_user(self, user_input=None):
         """Delegate to menu step."""
@@ -133,10 +120,7 @@ class KrowiEnergyManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_create_entry(
             title="Gas",
-            data={
-                CONF_DOMAIN_TYPE: DOMAIN_TYPE_GAS,
-                **user_input,
-            },
+            data={CONF_DOMAIN_TYPE: DOMAIN_TYPE_GAS},
         )
 
     async def async_step_settings(self, user_input=None):
@@ -223,13 +207,11 @@ class KrowiEnergyManagementOptionsFlow(config_entries.OptionsFlow):
         return self.async_create_entry(title="", data=user_input)
 
     async def async_step_gas_options(self, user_input=None):
-        """Gas options — pre-populated with current values."""
-        current = {**self._entry.data, **self._entry.options}
-
+        """Gas options — no configurable fields."""
         if user_input is None:
             return self.async_show_form(
                 step_id="gas_options",
-                data_schema=_gas_schema(current),
+                data_schema=_gas_schema(),
             )
 
-        return self.async_create_entry(title="", data=user_input)
+        return self.async_create_entry(title="", data={})

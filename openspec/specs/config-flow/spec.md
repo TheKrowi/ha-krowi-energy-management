@@ -99,18 +99,50 @@ The migration SHALL be idempotent — if the fields are already absent, no error
 
 ---
 
+### Requirement: Config entry migration v2 to v3
+The component SHALL implement a v2→v3 migration step in `async_migrate_entry`. For config entries at `VERSION = 2`, the migration SHALL:
+
+1. For gas entries: remove `unit` and `current_price_entity` from `entry.data` if present
+2. For electricity entries: no data changes required (already clean from v2)
+3. For settings entries: no data changes required
+4. Set `entry.version = 3` for all types
+
+The migration SHALL be idempotent — if the fields are already absent, no error occurs.
+
+`VERSION` at module level SHALL be `3`.
+
+#### Scenario: v2 gas entry is migrated on load
+- **WHEN** a v2 gas config entry with `unit = "€/MWh"` and `current_price_entity = "sensor.krowi_ttf_dam_30d_avg"` is loaded
+- **THEN** `async_migrate_entry` SHALL strip both fields
+- **THEN** the resulting entry SHALL have `version = 3` and contain only `domain_type = "gas"`
+
+#### Scenario: v2 electricity entry passes through migration unchanged
+- **WHEN** a v2 electricity config entry is loaded
+- **THEN** `async_migrate_entry` SHALL set `version = 3` without modifying any data fields
+
+#### Scenario: v2 settings entry passes through migration unchanged
+- **WHEN** a v2 settings config entry is loaded
+- **THEN** `async_migrate_entry` SHALL set `version = 3` without modifying any data fields
+
+#### Scenario: v3 entries are not re-migrated
+- **WHEN** a v3 config entry is loaded
+- **THEN** `async_migrate_entry` SHALL NOT be called
+
+---
+
 ### Requirement: Gas config entry data shape
 A gas config entry SHALL store the following fields:
 
 | Field | Type | Required | Default |
 |---|---|---|---|
 | `domain_type` | `"gas"` | Yes | — |
-| `unit` | `"c€/kWh" \| "€/kWh" \| "€/MWh"` | Yes | — |
-| `current_price_entity` | string (entity ID) | Yes | `sensor.krowi_ttf_dam_30d_avg` |
 
-#### Scenario: Gas entry contains all fields after setup
-- **WHEN** the gas config flow step is submitted
-- **THEN** the resulting config entry SHALL contain all three fields with correct types
+The `unit` and `current_price_entity` fields are removed from the gas config entry. Gas unit is always `c€/kWh` (hardcoded). The spot price is fetched internally by `TtfDamStore`.
+
+#### Scenario: Gas entry contains only domain_type after fresh setup
+- **WHEN** a user completes the gas config flow on a fresh install
+- **THEN** the resulting config entry data SHALL contain only `domain_type = "gas"`
+- **THEN** the entry SHALL NOT contain `unit` or `current_price_entity`
 
 ---
 
@@ -149,8 +181,8 @@ Each config entry SHALL have an options flow that shows only the fields relevant
 
 #### Scenario: Options flow for gas entry shows only gas fields
 - **WHEN** user opens configure for the Gas entry
-- **THEN** only gas-specific fields SHALL be shown (unit, current price entity)
-- **THEN** all fields SHALL be pre-populated with the current entry values
+- **THEN** a gas options form SHALL be shown (no configurable fields; gas is fully automatic)
+- **THEN** submitting SHALL not change any data
 
 #### Scenario: Saving options triggers entry reload
 - **WHEN** user saves the options flow for any entry

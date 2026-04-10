@@ -5,11 +5,10 @@ DOMAIN = "krowi_energy_management"
 # Unit options
 UNIT_OPTIONS = ["c€/kWh", "€/kWh", "€/MWh"]
 UNIT_ELECTRICITY = "c€/kWh"
+GAS_UNIT = "c€/kWh"
 
 # Config / options entry keys
 CONF_DOMAIN_TYPE = "domain_type"
-CONF_UNIT = "unit"
-CONF_CURRENT_PRICE_ENTITY = "current_price_entity"
 CONF_FX_RATE_ENTITY = "fx_rate_entity"
 CONF_EXPORT_TEMPLATE = "export_template"
 CONF_LOW_PRICE_CUTOFF = "low_price_cutoff"
@@ -18,9 +17,6 @@ DEFAULT_LOW_PRICE_CUTOFF = 1.0
 # Domain type values
 DOMAIN_TYPE_ELECTRICITY = "electricity"
 DOMAIN_TYPE_GAS = "gas"
-
-# Default entity IDs
-DEFAULT_GAS_PRICE_ENTITY = "sensor.krowi_ttf_dam_30d_avg"
 
 # Unique ID suffixes — electricity number entities
 UID_ELECTRICITY_GREEN_ENERGY = "electricity_tariff_green_energy_contribution"
@@ -52,9 +48,12 @@ UID_GAS_SURCHARGE_RATE = "gas_tariff_total_surcharge"
 UID_GAS_SURCHARGE_FORMULA = "gas_tariff_total_surcharge_formula"
 UID_GAS_PRICE = "gas_current_price"
 UID_GAS_PRICE_EUR = "gas_current_price_eur"
+UID_GAS_SPOT_TODAY_PRICE = "gas_spot_today_price"
+UID_GAS_SPOT_AVERAGE_PRICE = "gas_spot_average_price"
 
 # Dispatcher signals
 SIGNAL_NORDPOOL_UPDATE = "krowi_energy_management_nordpool_update"
+SIGNAL_TTF_DAM_UPDATE = "krowi_energy_management_ttf_dam_update"
 
 # Repairs issue ID template
 ISSUE_ENTITY_RENAMED = "entity_renamed_{entry_id}"
@@ -119,4 +118,9 @@ NAMES: dict[tuple[str, str], str] = {
     (UID_GAS_PRICE, LANG_NL): "Actuele prijs",
     (UID_GAS_PRICE_EUR, LANG_EN): "Current price (EUR/kWh)",
     (UID_GAS_PRICE_EUR, LANG_NL): "Actuele prijs (EUR/kWh)",
+    # Gas spot sensor entities
+    (UID_GAS_SPOT_TODAY_PRICE, LANG_EN): "Spot today price",
+    (UID_GAS_SPOT_TODAY_PRICE, LANG_NL): "Spotprijs vandaag",
+    (UID_GAS_SPOT_AVERAGE_PRICE, LANG_EN): "Spot 30-day average",
+    (UID_GAS_SPOT_AVERAGE_PRICE, LANG_NL): "Spotprijs 30-daags gemiddelde",
 }

@@ -13,13 +13,13 @@ Entities (all under domain `krowi_energy_management`):
 
 | Unique ID | Friendly name (EN) | Unit | Min | Max | Step |
 |-----------|-------------------|------|-----|-----|------|
-| `gas_tariff_distribution` | Distribution | gas_unit | 0 | 9999 | 0.00001 |
-| `gas_tariff_transport` | Transport (Fluxys) | gas_unit | 0 | 9999 | 0.00001 |
-| `gas_tariff_excise_duty` | Excise duty | gas_unit | 0 | 9999 | 0.00001 |
-| `gas_tariff_energy_contribution` | Energy contribution | gas_unit | 0 | 9999 | 0.00001 |
+| `gas_tariff_distribution` | Distribution | `c€/kWh` | 0 | 9999 | 0.00001 |
+| `gas_tariff_transport` | Transport (Fluxys) | `c€/kWh` | 0 | 9999 | 0.00001 |
+| `gas_tariff_excise_duty` | Excise duty | `c€/kWh` | 0 | 9999 | 0.00001 |
+| `gas_tariff_energy_contribution` | Energy contribution | `c€/kWh` | 0 | 9999 | 0.00001 |
 | `gas_vat` | VAT | `%` | 0 | 100 | 0.01 |
 
-`gas_unit` is the unit configured in the config entry (one of `c€/kWh`, `€/kWh`, `€/MWh`), independent of `electricity_unit`.
+Gas unit is permanently `c€/kWh` (defined by the `GAS_UNIT` constant). It is no longer read from the config entry.
 
 #### Scenario: Entities are present after setup
 - **WHEN** the config entry is loaded

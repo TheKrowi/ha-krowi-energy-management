@@ -1,10 +1,4 @@
-# Spec: gas-eur-sensors
-
-## Purpose
-
-Defines the gas surcharge formula sensor and the EUR/kWh bridge sensor for the gas device.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Gas surcharge formula sensor
 The component SHALL expose a sensor with unique ID `gas_tariff_total_surcharge_formula` and English display name "Total surcharge formula" that reports a human-readable string showing the four individual gas surcharge values and their sum.
@@ -20,10 +14,6 @@ Format: `"<d> + <t> + <e> + <ec> = <total> c€/kWh"` where each value is format
 #### Scenario: Formula sensor defaults to zeros
 - **WHEN** no gas rate has been configured yet
 - **THEN** `gas_tariff_total_surcharge_formula` SHALL report `"0.00000 + 0.00000 + 0.00000 + 0.00000 = 0.00000 c€/kWh"`
-
-#### Scenario: Formula sensor updates when a rate changes
-- **WHEN** any of the four gas tariff rate entities changes state
-- **THEN** `gas_tariff_total_surcharge_formula` SHALL recompute immediately
 
 ---
 
@@ -42,6 +32,12 @@ Since gas unit is always `c€/kWh`, the conversion is always: divide `gas_curre
 - **WHEN** `gas_current_price` is `unavailable`
 - **THEN** `gas_current_price_eur` SHALL be `unavailable`
 
-#### Scenario: EUR bridge grouped under Gas device
-- **WHEN** the component is loaded
-- **THEN** `gas_current_price_eur` SHALL be associated with the device identified by `(DOMAIN, entry_id + "_gas")`
+## REMOVED Requirements
+
+### Requirement: Gas EUR bridge converts from €/kWh
+**Reason**: Gas unit is now hardcoded to `c€/kWh`. The `€/kWh` and `€/MWh` conversion branches in the bridge sensor are removed.
+**Migration**: Users previously using `€/kWh` or `€/MWh` as gas unit will have their config entries migrated to `c€/kWh`. Values in the bridge sensor may differ numerically but represent the same physical price.
+
+### Requirement: Gas EUR bridge converts from €/MWh
+**Reason**: Same as above.
+**Migration**: Same as above.

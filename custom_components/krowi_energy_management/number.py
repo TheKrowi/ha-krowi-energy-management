@@ -11,10 +11,10 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback # type: ig
 
 from .const import (
     CONF_DOMAIN_TYPE,
-    CONF_UNIT,
     DOMAIN,
     DOMAIN_TYPE_ELECTRICITY,
     DOMAIN_TYPE_GAS,
+    GAS_UNIT,
     LANG_EN,
     NAMES,
     UNIT_ELECTRICITY,
@@ -64,7 +64,6 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up number entities for this config entry."""
-    effective = {**entry.data, **entry.options}
     domain_type = entry.data[CONF_DOMAIN_TYPE]
     language = get_language(hass)
 
@@ -74,7 +73,7 @@ async def async_setup_entry(
         device_suffix = "electricity"
         device_name = "Electricity"
     else:
-        unit = effective[CONF_UNIT]
+        unit = GAS_UNIT
         descriptors = _GAS_DESCRIPTORS
         device_suffix = "gas"
         device_name = "Gas"
