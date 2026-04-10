@@ -107,6 +107,7 @@ class KrowiNumberEntity(RestoreNumber, NumberEntity):
         device_info: DeviceInfo,
     ) -> None:
         self._attr_unique_id = descriptor.unique_id_suffix
+        self.entity_id = f"number.{descriptor.unique_id_suffix}"
         self._attr_name = descriptor.name
         self._attr_native_unit_of_measurement = unit
         self._attr_native_min_value = descriptor.min_value

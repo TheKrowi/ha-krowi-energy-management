@@ -7,6 +7,7 @@
         "git tag": true,
         "git add": true,
         "git commit": true,
-        "mv": true
+        "mv": true,
+        "Move-Item": true
     }
 }
