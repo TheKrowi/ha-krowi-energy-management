@@ -12,7 +12,6 @@
       "electricity": {
         "title": "Electricity Configuration",
         "data": {
-          "unit": "Unit",
           "current_price_entity": "Current price entity",
           "fx_rate_entity": "FX rate entity (optional)",
           "export_template": "Export price template (Jinja2)"
@@ -43,13 +42,11 @@
       "electricity_options": {
         "title": "Electricity Options",
         "data": {
-          "unit": "Unit",
           "current_price_entity": "Current price entity",
           "fx_rate_entity": "FX rate entity (optional)",
           "export_template": "Export price template (Jinja2)"
         },
         "data_description": {
-          "unit": "Changing the unit does not rescale existing tariff values.",
           "current_price_entity": "Entity ID of your electricity spot price source.",
           "fx_rate_entity": "Entity ID of an exchange rate sensor. Leave empty for no FX conversion.",
           "export_template": "Jinja2 template that evaluates to the current export price."
@@ -92,6 +89,8 @@
       "electricity_surcharge_formula": {"name": "Electricity surcharge formula"},
       "electricity_price_import": {"name": "Electricity import price"},
       "electricity_price_export": {"name": "Electricity export price"},
+      "electricity_price_import_eur": {"name": "Electricity import price (EUR/kWh)"},
+      "electricity_price_export_eur": {"name": "Electricity export price (EUR/kWh)"},
       "gas_surcharge_rate": {"name": "Gas surcharge rate"},
       "gas_price": {"name": "Gas price"}
     }

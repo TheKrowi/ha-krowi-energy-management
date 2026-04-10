@@ -27,7 +27,6 @@ def _electricity_schema(defaults: dict | None = None) -> vol.Schema:
     d = defaults or {}
     return vol.Schema(
         {
-            vol.Required(CONF_UNIT, default=d.get(CONF_UNIT, UNIT_OPTIONS[1])): vol.In(UNIT_OPTIONS),
             vol.Required(
                 CONF_CURRENT_PRICE_ENTITY,
                 default=d.get(CONF_CURRENT_PRICE_ENTITY, DEFAULT_ELECTRICITY_PRICE_ENTITY),

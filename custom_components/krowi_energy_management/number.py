@@ -15,6 +15,7 @@ from .const import (
     DOMAIN,
     DOMAIN_TYPE_ELECTRICITY,
     DOMAIN_TYPE_GAS,
+    UNIT_ELECTRICITY,
     UID_ELECTRICITY_DISTRIBUTION_TRANSPORT,
     UID_ELECTRICITY_ENERGY_CONTRIBUTION,
     UID_ELECTRICITY_EXCISE_DUTY,
@@ -63,13 +64,14 @@ async def async_setup_entry(
     """Set up number entities for this config entry."""
     effective = {**entry.data, **entry.options}
     domain_type = entry.data[CONF_DOMAIN_TYPE]
-    unit = effective[CONF_UNIT]
 
     if domain_type == DOMAIN_TYPE_ELECTRICITY:
+        unit = UNIT_ELECTRICITY
         descriptors = _ELECTRICITY_DESCRIPTORS
         device_suffix = "electricity"
         device_name = "Electricity"
     else:
+        unit = effective[CONF_UNIT]
         descriptors = _GAS_DESCRIPTORS
         device_suffix = "gas"
         device_name = "Gas"

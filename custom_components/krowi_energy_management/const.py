@@ -4,6 +4,7 @@ DOMAIN = "krowi_energy_management"
 
 # Unit options
 UNIT_OPTIONS = ["c€/kWh", "€/kWh", "€/MWh"]
+UNIT_ELECTRICITY = "c€/kWh"
 
 # Config / options entry keys
 CONF_DOMAIN_TYPE = "domain_type"
@@ -39,6 +40,9 @@ UID_ELECTRICITY_SURCHARGE_RATE = "electricity_surcharge_rate"
 UID_ELECTRICITY_SURCHARGE_FORMULA = "electricity_surcharge_formula"
 UID_ELECTRICITY_PRICE_IMPORT = "electricity_price_import"
 UID_ELECTRICITY_PRICE_EXPORT = "electricity_price_export"
+
+UID_ELECTRICITY_PRICE_IMPORT_EUR = "electricity_price_import_eur"
+UID_ELECTRICITY_PRICE_EXPORT_EUR = "electricity_price_export_eur"
 
 # Unique ID suffixes — gas sensors
 UID_GAS_SURCHARGE_RATE = "gas_surcharge_rate"

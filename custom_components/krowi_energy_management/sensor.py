@@ -26,12 +26,15 @@ from .const import (
     CONF_UNIT,
     DOMAIN,
     DOMAIN_TYPE_ELECTRICITY,
+    UNIT_ELECTRICITY,
     UID_ELECTRICITY_DISTRIBUTION_TRANSPORT,
     UID_ELECTRICITY_ENERGY_CONTRIBUTION,
     UID_ELECTRICITY_EXCISE_DUTY,
     UID_ELECTRICITY_GREEN_ENERGY,
     UID_ELECTRICITY_PRICE_EXPORT,
+    UID_ELECTRICITY_PRICE_EXPORT_EUR,
     UID_ELECTRICITY_PRICE_IMPORT,
+    UID_ELECTRICITY_PRICE_IMPORT_EUR,
     UID_ELECTRICITY_SURCHARGE_FORMULA,
     UID_ELECTRICITY_SURCHARGE_RATE,
     UID_ELECTRICITY_VAT,
@@ -62,7 +65,7 @@ async def async_setup_entry(
     """Set up sensor entities for this config entry."""
     effective = {**entry.data, **entry.options}
     domain_type = entry.data[CONF_DOMAIN_TYPE]
-    unit = effective[CONF_UNIT]
+    unit = UNIT_ELECTRICITY if domain_type == DOMAIN_TYPE_ELECTRICITY else effective[CONF_UNIT]
     entry_id = entry.entry_id
 
     if domain_type == DOMAIN_TYPE_ELECTRICITY:
@@ -83,6 +86,8 @@ async def async_setup_entry(
             ElectricityExportPriceSensor(
                 hass, entry_id, unit, export_template_str, device_info
             ),
+            ElectricityImportPriceEurSensor(hass, entry_id, device_info),
+            ElectricityExportPriceEurSensor(hass, entry_id, device_info),
         ]
     else:
         device_info = DeviceInfo(
@@ -405,6 +410,78 @@ class ElectricityExportPriceSensor(KrowiSensor):
         if self._unsub_template is not None:
             self._unsub_template.async_remove()
             self._unsub_template = None
+
+
+# ---------------------------------------------------------------------------
+# Electricity EUR bridge sensors (EUR/kWh for HA Energy Dashboard)
+# ---------------------------------------------------------------------------
+
+class ElectricityImportPriceEurSensor(KrowiSensor):
+    """Electricity import price in EUR/kWh (import price ÷ 100)."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = "EUR/kWh"
+
+    def __init__(self, hass, entry_id, device_info):
+        super().__init__(hass, entry_id, device_info)
+        self._attr_unique_id = UID_ELECTRICITY_PRICE_IMPORT_EUR
+        self._attr_name = "Electricity import price (EUR/kWh)"
+
+    def _source_entity_id(self) -> str | None:
+        return _resolve_entity_id(self.hass, "sensor", UID_ELECTRICITY_PRICE_IMPORT)
+
+    def _subscribe_listeners(self) -> None:
+        source_id = self._source_entity_id()
+        if source_id:
+            self._track([source_id], self._handle_state_change)
+
+    @callback
+    def _handle_state_change(self, event) -> None:
+        self._update()
+
+    def _update(self) -> None:
+        source_id = self._source_entity_id()
+        value = safe_float_state(self.hass, source_id) if source_id else None
+        self._attr_native_value = round(value / 100, 5) if value is not None else None
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._update()
+
+
+class ElectricityExportPriceEurSensor(KrowiSensor):
+    """Electricity export price in EUR/kWh (export price ÷ 100)."""
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = "EUR/kWh"
+
+    def __init__(self, hass, entry_id, device_info):
+        super().__init__(hass, entry_id, device_info)
+        self._attr_unique_id = UID_ELECTRICITY_PRICE_EXPORT_EUR
+        self._attr_name = "Electricity export price (EUR/kWh)"
+
+    def _source_entity_id(self) -> str | None:
+        return _resolve_entity_id(self.hass, "sensor", UID_ELECTRICITY_PRICE_EXPORT)
+
+    def _subscribe_listeners(self) -> None:
+        source_id = self._source_entity_id()
+        if source_id:
+            self._track([source_id], self._handle_state_change)
+
+    @callback
+    def _handle_state_change(self, event) -> None:
+        self._update()
+
+    def _update(self) -> None:
+        source_id = self._source_entity_id()
+        value = safe_float_state(self.hass, source_id) if source_id else None
+        self._attr_native_value = round(value / 100, 5) if value is not None else None
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._update()
 
 
 # ---------------------------------------------------------------------------
