@@ -394,10 +394,15 @@ class ElectricityExportPriceSensor(KrowiSensor):
             _result_callback,
         )
 
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        if self._unsub_template is not None:
+            self._unsub_template.async_refresh()
+
     async def async_will_remove_from_hass(self) -> None:
         await super().async_will_remove_from_hass()
         if self._unsub_template is not None:
-            self._unsub_template()
+            self._unsub_template.async_remove()
             self._unsub_template = None
 
 

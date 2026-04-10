@@ -7,7 +7,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.entity_registry import EVENT_ENTITY_REGISTRY_UPDATED
 from homeassistant.helpers.issue_registry import IssueSeverity, async_create_issue, async_delete_issue
 
 from .const import CONF_DOMAIN_TYPE, DOMAIN
@@ -48,7 +47,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             translation_placeholders={"domain_type": domain_type},
         )
 
-    unsub = hass.bus.async_listen(EVENT_ENTITY_REGISTRY_UPDATED, _on_entity_registry_updated)
+    unsub = hass.bus.async_listen("entity_registry_updated", _on_entity_registry_updated)
     hass.data.setdefault(DOMAIN, {})[f"unsub_registry_{entry.entry_id}"] = unsub
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

@@ -11,10 +11,13 @@ _LOGGER = logging.getLogger(__name__)
 _UNIT_FACTORS: dict[str, tuple[float, int]] = {
     "c€/Wh": (0.01, 1),
     "€/Wh": (1.0, 1),
+    "EUR/Wh": (1.0, 1),
     "c€/kWh": (0.01, 1_000),
     "€/kWh": (1.0, 1_000),
+    "EUR/kWh": (1.0, 1_000),
     "c€/MWh": (0.01, 1_000_000),
     "€/MWh": (1.0, 1_000_000),
+    "EUR/MWh": (1.0, 1_000_000),
 }
 
 
