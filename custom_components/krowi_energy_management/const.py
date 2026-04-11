@@ -51,10 +51,89 @@ UID_GAS_PRICE = "gas_current_price"
 UID_GAS_PRICE_EUR = "gas_current_price_eur"
 UID_GAS_SPOT_TODAY_PRICE = "gas_spot_today_price"
 UID_GAS_SPOT_AVERAGE_PRICE = "gas_spot_average_price"
+UID_GAS_CALORIFIC_VALUE = "gas_calorific_value"
+UID_GAS_PRICE_M3 = "gas_current_price_m3"
+UID_GAS_CONSUMPTION_KWH = "gas_consumption_kwh"
 
 # Dispatcher signals
 SIGNAL_NORDPOOL_UPDATE = "krowi_energy_management_nordpool_update"
 SIGNAL_TTF_DAM_UPDATE = "krowi_energy_management_ttf_dam_update"
+SIGNAL_GCV_UPDATE = "krowi_energy_management_gcv_update"
+
+# GCV / gas meter config keys and defaults
+CONF_GOS_ZONE = "gos_zone"
+DEFAULT_GOS_ZONE = "GOS FLUVIUS - LEUVEN"
+CONF_GAS_METER_ENTITY = "gas_meter_entity"
+DEFAULT_GAS_METER_ENTITY = "sensor.gas_meter_consumption"
+
+# Atrias GCV API
+ATRIAS_GCV_API_URL = "https://api.atrias.be/roots/download/"
+ATRIAS_SUBSCRIPTION_KEY = "41be1fbab53b4a80ba0d17084a338a55"
+
+# Belgian GOS zone options (alphabetical, from Atrias GCV files)
+GOS_ZONE_OPTIONS: list[str] = [
+    "GOS FLUVIUS - AALST",
+    "GOS FLUVIUS - ANTWERPEN",
+    "GOS FLUVIUS - ANTWERPEN SCHELDELAAN",
+    "GOS FLUVIUS - BERINGEN",
+    "GOS FLUVIUS - BEVEREN",
+    "GOS FLUVIUS - GENT",
+    "GOS FLUVIUS - GENT MANUPORT",
+    "GOS FLUVIUS - GOOIK",
+    "GOS FLUVIUS - HASSELT",
+    "GOS FLUVIUS - KORTRIJK",
+    "GOS FLUVIUS - LEUVEN",
+    "GOS FLUVIUS - LIEDEKERKE",
+    "GOS FLUVIUS - OOSTENDE",
+    "GOS FLUVIUS - STEENOKKERZEEL",
+    "GOS FLUVIUS - VILVOORDE",
+    "GOS FLUVIUS - ZAVENTEM",
+    "GOS FLUVIUS - ZELZATE",
+    "GOS FLUVIUS-ORES HALLE BRAINE-NVL",
+    "IDEG EGHEZEE (GOS)",
+    "IDEG ISNES (GOS)",
+    "IDEG METTET (GOS)",
+    "IDEG NAMUR (GOS)",
+    "IDEG ROCHEFORT (GOS)",
+    "IDEG VEHIRE (GOS)",
+    "IGH ATH-LEUZE (GOS)",
+    "IGH BAUDOUR AVOCAT (GOS)",
+    "IGH ELLEZELLES (GOS)",
+    "IGH ENGHIEN (GOS)",
+    "IGH HENSIES THULIN (GOS)",
+    "IGH MONS-CHARLEROI (GOS)",
+    "IGH QUEVAUCAMPS (GOS)",
+    "IGH QUIEVRAIN (GOS)",
+    "IGH SIRAULT (GOS)",
+    "IGH SOIGNIES (GOS)",
+    "IGH TOURNAI (GOS)",
+    "INTERLUX ARLON (GOS)",
+    "INTERLUX AUBANGE (GOS)",
+    "INTERLUX AYE (GOS)",
+    "INTERLUX BASTOGNE (GOS)",
+    "INTERLUX LIBRAMONT (GOS)",
+    "INTERLUX NEUFCHÂTEAU (GOS)",
+    "INTERLUX VIELSALM (GOS)",
+    "IVERLEK DILBEEK (GOS)",
+    "RESA AMAY (GOS)",
+    "RESA ANDENNE (GOS)",
+    "RESA ENGIS (GOS)",
+    "RESA EST (GOS)",
+    "RESA HANNUT (GOS)",
+    "RESA HERMALLE-SOUS-HUY (GOS)",
+    "RESA HUY (GOS)",
+    "RESA LIEGE (GOS)",
+    "RESA SPIME (GOS)",
+    "RESA ST.-GEORGES-SUR-MEUSE (GOS)",
+    "RESA VERVIERS (GOS)",
+    "RESA VILLERS-LE-BOUILLET (GOS)",
+    "SEDILEC ECAUSSINNES (GOS)",
+    "SEDILEC GENAPPE (GOS)",
+    "SEDILEC HENNUYERES (GOS)",
+    "SEDILEC VIRGINAL (GOS)",
+    "SIBELGA QUAI (GOS)",
+    "SRA FLUVIUS-ORES OVERIJSE \u2013 GBLX",
+]
 
 # Repairs issue ID template
 ISSUE_ENTITY_RENAMED = "entity_renamed_{entry_id}"
@@ -124,4 +203,11 @@ NAMES: dict[tuple[str, str], str] = {
     (UID_GAS_SPOT_TODAY_PRICE, LANG_NL): "Dagprijs (TTF DAM)",
     (UID_GAS_SPOT_AVERAGE_PRICE, LANG_EN): "Monthly average price (TTF DAM)",
     (UID_GAS_SPOT_AVERAGE_PRICE, LANG_NL): "Gemiddelde maandprijs (TTF DAM)",
+    # Gas GCV and m³ sensor entities
+    (UID_GAS_CALORIFIC_VALUE, LANG_EN): "Calorific value",
+    (UID_GAS_CALORIFIC_VALUE, LANG_NL): "Calorische waarde",
+    (UID_GAS_PRICE_M3, LANG_EN): "Current price (€/m³)",
+    (UID_GAS_PRICE_M3, LANG_NL): "Huidige prijs (€/m³)",
+    (UID_GAS_CONSUMPTION_KWH, LANG_EN): "Consumption (kWh)",
+    (UID_GAS_CONSUMPTION_KWH, LANG_NL): "Verbruik (kWh)",
 }

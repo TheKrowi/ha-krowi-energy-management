@@ -65,12 +65,12 @@
       "gas_options": {
         "title": "Gas Options",
         "data": {
-          "unit": "Unit",
-          "current_price_entity": "Current price entity"
+          "gos_zone": "GOS zone",
+          "gas_meter_entity": "Gas meter entity"
         },
         "data_description": {
-          "unit": "Changing the unit does not rescale existing tariff values.",
-          "current_price_entity": "Entity ID of your gas price source."
+          "gos_zone": "Your Belgian gas distribution zone (GOS). Found in Mijn Fluvius under \"Technische gegevens van uw aansluiting\".",
+          "gas_meter_entity": "Entity ID of your gas meter (m\u00b3, total increasing). Used to compute gas consumption in kWh."
         }
       },
       "settings_options": {

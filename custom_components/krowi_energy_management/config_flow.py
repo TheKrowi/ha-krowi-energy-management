@@ -11,14 +11,19 @@ from homeassistant.helpers import entity_registry as er, selector # type: ignore
 from .const import (
     CONF_DOMAIN_TYPE,
     CONF_EXPORT_TEMPLATE,
+    CONF_GAS_METER_ENTITY,
+    CONF_GOS_ZONE,
     CONF_LANGUAGE,
     CONF_LOW_PRICE_CUTOFF,
     DEFAULT_EXPORT_TEMPLATE,
+    DEFAULT_GAS_METER_ENTITY,
+    DEFAULT_GOS_ZONE,
     DEFAULT_LOW_PRICE_CUTOFF,
     DOMAIN,
     DOMAIN_TYPE_ELECTRICITY,
     DOMAIN_TYPE_GAS,
     DOMAIN_TYPE_SETTINGS,
+    GOS_ZONE_OPTIONS,
     LANG_EN,
     LANGUAGE_OPTIONS,
 )
@@ -61,6 +66,22 @@ def _electricity_options_schema(defaults: dict | None = None) -> vol.Schema:
                     mode=selector.NumberSelectorMode.BOX,
                 )
             ),
+        }
+    )
+
+
+def _gas_options_schema(defaults: dict | None = None) -> vol.Schema:
+    d = defaults or {}
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_GOS_ZONE,
+                default=d.get(CONF_GOS_ZONE, DEFAULT_GOS_ZONE),
+            ): vol.In(GOS_ZONE_OPTIONS),
+            vol.Optional(
+                CONF_GAS_METER_ENTITY,
+                default=d.get(CONF_GAS_METER_ENTITY, DEFAULT_GAS_METER_ENTITY),
+            ): selector.EntitySelector(),
         }
     )
 
@@ -208,11 +229,13 @@ class KrowiEnergyManagementOptionsFlow(config_entries.OptionsFlow):
         return self.async_create_entry(title="", data=user_input)
 
     async def async_step_gas_options(self, user_input=None):
-        """Gas options — no configurable fields."""
+        """Gas options — GOS zone and gas meter entity."""
+        current = {**self._entry.data, **self._entry.options}
+
         if user_input is None:
             return self.async_show_form(
                 step_id="gas_options",
-                data_schema=_gas_schema(),
+                data_schema=_gas_options_schema(current),
             )
 
-        return self.async_create_entry(title="", data={})
+        return self.async_create_entry(title="", data=user_input)

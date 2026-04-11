@@ -26,6 +26,17 @@
   },
   "options": {
     "step": {
+      "gas_options": {
+        "title": "Gas-opties",
+        "data": {
+          "gos_zone": "GOS-zone",
+          "gas_meter_entity": "Gasmeterentiteit"
+        },
+        "data_description": {
+          "gos_zone": "Uw Belgische gasdistributiezone (GOS). Te vinden in Mijn Fluvius onder \"Technische gegevens van uw aansluiting\".",
+          "gas_meter_entity": "Entiteits-ID van uw gasmeter (m\u00b3, totaal oplopend). Wordt gebruikt om het gasverbruik in kWh te berekenen."
+        }
+      },
       "settings_options": {
         "title": "Instellingen",
         "data": {

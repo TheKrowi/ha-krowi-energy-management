@@ -12,7 +12,11 @@ from homeassistant.helpers.issue_registry import IssueSeverity, async_create_iss
 from .const import (
     CONF_DOMAIN_TYPE,
     CONF_FX_RATE_ENTITY,
+    CONF_GAS_METER_ENTITY,
+    CONF_GOS_ZONE,
     CONF_LOW_PRICE_CUTOFF,
+    DEFAULT_GAS_METER_ENTITY,
+    DEFAULT_GOS_ZONE,
     DEFAULT_LOW_PRICE_CUTOFF,
     DOMAIN,
     DOMAIN_TYPE_ELECTRICITY,
@@ -20,6 +24,7 @@ from .const import (
 )
 from .nordpool_store import NordpoolBeStore
 from .ttf_dam_store import TtfDamStore
+from .gcv_store import GcvStore
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -96,11 +101,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await store.async_start(hass, low_price_cutoff)
         hass.data.setdefault(DOMAIN, {})["nordpool_store"] = store
 
-    # For gas entries, start the TTF DAM store before platform setup
+    # For gas entries, start the TTF DAM store and GCV store before platform setup
     if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_GAS:
-        store = TtfDamStore()
-        await store.async_start(hass)
-        hass.data.setdefault(DOMAIN, {})["ttf_dam_store"] = store
+        effective = {**entry.data, **entry.options}
+        ttf_store = TtfDamStore()
+        await ttf_store.async_start(hass)
+        hass.data.setdefault(DOMAIN, {})["ttf_dam_store"] = ttf_store
+
+        gos_zone = effective.get(CONF_GOS_ZONE, DEFAULT_GOS_ZONE)
+        gcv_store = GcvStore(gos_zone)
+        await gcv_store.async_start(hass)
+        hass.data.setdefault(DOMAIN, {})["gcv_store"] = gcv_store
 
     if entry.data.get(CONF_DOMAIN_TYPE) in (DOMAIN_TYPE_ELECTRICITY, DOMAIN_TYPE_GAS):
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -121,11 +132,14 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if store:
             await store.async_stop()
 
-    # Stop the TTF DAM store for gas entries
+    # Stop the TTF DAM store and GCV store for gas entries
     if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_GAS:
         store = hass.data.get(DOMAIN, {}).pop("ttf_dam_store", None)
         if store:
             await store.async_stop()
+        gcv_store = hass.data.get(DOMAIN, {}).pop("gcv_store", None)
+        if gcv_store:
+            await gcv_store.async_stop()
 
     # Unsubscribe the entity registry listener
     unsub = hass.data.get(DOMAIN, {}).pop(f"unsub_registry_{entry.entry_id}", None)

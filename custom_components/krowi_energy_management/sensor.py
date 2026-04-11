@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity, SensorStateClass # type: ignore
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass  # type: ignore
 from homeassistant.config_entries import ConfigEntry # type: ignore
 from homeassistant.const import STATE_UNAVAILABLE # type: ignore
 from homeassistant.core import HomeAssistant, callback # type: ignore
@@ -22,12 +22,15 @@ from homeassistant.helpers.template import Template # type: ignore
 from .const import (
     CONF_DOMAIN_TYPE,
     CONF_EXPORT_TEMPLATE,
+    CONF_GAS_METER_ENTITY,
+    DEFAULT_GAS_METER_ENTITY,
     DOMAIN,
     DOMAIN_TYPE_ELECTRICITY,
     DOMAIN_TYPE_GAS,
     GAS_UNIT,
     LANG_EN,
     NAMES,
+    SIGNAL_GCV_UPDATE,
     SIGNAL_NORDPOOL_UPDATE,
     SIGNAL_TTF_DAM_UPDATE,
     UNIT_ELECTRICITY,
@@ -44,11 +47,14 @@ from .const import (
     UID_ELECTRICITY_SURCHARGE_FORMULA,
     UID_ELECTRICITY_SURCHARGE_RATE,
     UID_ELECTRICITY_VAT,
+    UID_GAS_CALORIFIC_VALUE,
+    UID_GAS_CONSUMPTION_KWH,
     UID_GAS_DISTRIBUTION,
     UID_GAS_ENERGY_CONTRIBUTION,
     UID_GAS_EXCISE_DUTY,
     UID_GAS_PRICE,
     UID_GAS_PRICE_EUR,
+    UID_GAS_PRICE_M3,
     UID_GAS_SPOT_AVERAGE_PRICE,
     UID_GAS_SPOT_TODAY_PRICE,
     UID_GAS_SURCHARGE_FORMULA,
@@ -103,6 +109,7 @@ async def async_setup_entry(
             identifiers={(DOMAIN, f"{entry_id}_gas")},
             name="Gas",
         )
+        gas_meter_entity = effective.get(CONF_GAS_METER_ENTITY, DEFAULT_GAS_METER_ENTITY) or DEFAULT_GAS_METER_ENTITY
 
         entities = [
             GasSpotTodayPriceSensor(hass, entry_id, device_info, language),
@@ -111,6 +118,9 @@ async def async_setup_entry(
             GasSurchargeFormulaSensor(hass, entry_id, GAS_UNIT, device_info, language),
             GasCurrentPriceSensor(hass, entry_id, device_info, language),
             GasCurrentPriceEurSensor(hass, entry_id, device_info, language),
+            GasCalorificValueSensor(hass, entry_id, device_info, language),
+            GasCurrentPriceM3Sensor(hass, entry_id, device_info, language),
+            GasConsumptionKwhSensor(hass, entry_id, gas_meter_entity, device_info, language),
         ]
     else:
         return
@@ -898,6 +908,189 @@ class GasCurrentPriceEurSensor(KrowiSensor):
         source_id = self._source_entity_id()
         value = safe_float_state(self.hass, source_id) if source_id else None
         self._attr_native_value = round(value / 100, 5) if value is not None else None
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._update()
+
+
+# ---------------------------------------------------------------------------
+# Gas calorific value sensor (GcvStore)
+# ---------------------------------------------------------------------------
+
+class GasCalorificValueSensor(KrowiSensor):
+    """Monthly GCV for the configured GOS zone in kWh/m³, sourced from GcvStore."""
+
+    _attr_icon = "mdi:fire"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = "kWh/m³"
+    _attr_device_class = None
+
+    def __init__(self, hass, entry_id, device_info, language=LANG_EN):
+        super().__init__(hass, entry_id, device_info)
+        self._attr_unique_id = UID_GAS_CALORIFIC_VALUE
+        self.entity_id = f"sensor.{UID_GAS_CALORIFIC_VALUE}"
+        self._attr_name = NAMES.get(
+            (UID_GAS_CALORIFIC_VALUE, language),
+            NAMES[(UID_GAS_CALORIFIC_VALUE, LANG_EN)],
+        )
+
+    def _get_store(self):
+        return self.hass.data.get(DOMAIN, {}).get("gcv_store")
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._unsub_listeners.append(
+            async_dispatcher_connect(self.hass, SIGNAL_GCV_UPDATE, self._on_update)
+        )
+        self._on_update()
+
+    @callback
+    def _on_update(self) -> None:
+        store = self._get_store()
+        if store is None or store.gcv is None:
+            self._attr_native_value = None
+            self._attr_available = False
+        else:
+            self._attr_native_value = store.gcv
+            self._attr_available = True
+        self.async_write_ha_state()
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        store = self._get_store()
+        if store is None:
+            return {"history": {}, "data_is_fresh": False}
+        return {
+            "history": store.history,
+            "data_is_fresh": store.data_is_fresh,
+        }
+
+
+# ---------------------------------------------------------------------------
+# Gas current price €/m³ sensor
+# ---------------------------------------------------------------------------
+
+class GasCurrentPriceM3Sensor(KrowiSensor):
+    """Gas price in €/m³ = gas_current_price_eur × calorific_value."""
+
+    _attr_icon = "mdi:currency-eur"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = "€/m³"
+    _attr_device_class = None
+
+    def __init__(self, hass, entry_id, device_info, language=LANG_EN):
+        super().__init__(hass, entry_id, device_info)
+        self._attr_unique_id = UID_GAS_PRICE_M3
+        self.entity_id = f"sensor.{UID_GAS_PRICE_M3}"
+        self._attr_name = NAMES.get(
+            (UID_GAS_PRICE_M3, language),
+            NAMES[(UID_GAS_PRICE_M3, LANG_EN)],
+        )
+
+    def _get_store(self):
+        return self.hass.data.get(DOMAIN, {}).get("gcv_store")
+
+    def _source_entity_id(self) -> str | None:
+        return _resolve_entity_id(self.hass, "sensor", UID_GAS_PRICE_EUR)
+
+    def _subscribe_listeners(self) -> None:
+        source_id = self._source_entity_id()
+        if source_id:
+            self._track([source_id], self._handle_state_change)
+
+    @callback
+    def _handle_state_change(self, event) -> None:
+        self._update()
+
+    def _update(self) -> None:
+        store = self._get_store()
+        if store is None or store.gcv is None:
+            self._attr_native_value = None
+            self._attr_available = False
+            self.async_write_ha_state()
+            return
+
+        source_id = self._source_entity_id()
+        eur_kwh = safe_float_state(self.hass, source_id) if source_id else None
+        if eur_kwh is None:
+            self._attr_native_value = None
+            self._attr_available = False
+        else:
+            self._attr_native_value = round(eur_kwh * store.gcv, 5)
+            self._attr_available = True
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._update()
+
+
+# ---------------------------------------------------------------------------
+# Gas consumption kWh sensor
+# ---------------------------------------------------------------------------
+
+class GasConsumptionKwhSensor(KrowiSensor):
+    """Gas consumption in kWh = gas_meter_m³ × calorific_value."""
+
+    _attr_icon = "mdi:gas-burner"
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_native_unit_of_measurement = "kWh"
+    _attr_device_class = SensorDeviceClass.ENERGY
+
+    def __init__(self, hass, entry_id, gas_meter_entity: str, device_info, language=LANG_EN):
+        super().__init__(hass, entry_id, device_info)
+        self._gas_meter_entity = gas_meter_entity
+        self._attr_unique_id = UID_GAS_CONSUMPTION_KWH
+        self.entity_id = f"sensor.{UID_GAS_CONSUMPTION_KWH}"
+        self._attr_name = NAMES.get(
+            (UID_GAS_CONSUMPTION_KWH, language),
+            NAMES[(UID_GAS_CONSUMPTION_KWH, LANG_EN)],
+        )
+
+    def _get_store(self):
+        return self.hass.data.get(DOMAIN, {}).get("gcv_store")
+
+    def _subscribe_listeners(self) -> None:
+        if self._gas_meter_entity:
+            self._track([self._gas_meter_entity], self._handle_state_change)
+
+    @callback
+    def _handle_state_change(self, event) -> None:
+        self._update()
+
+    def _update(self) -> None:
+        if not self._gas_meter_entity:
+            self._attr_native_value = None
+            self._attr_available = False
+            self.async_write_ha_state()
+            return
+
+        store = self._get_store()
+        if store is None or store.gcv is None:
+            self._attr_native_value = None
+            self._attr_available = False
+            self.async_write_ha_state()
+            return
+
+        meter_state = self.hass.states.get(self._gas_meter_entity)
+        if meter_state is None or meter_state.state in ("unavailable", "unknown"):
+            self._attr_native_value = None
+            self._attr_available = False
+            self.async_write_ha_state()
+            return
+
+        try:
+            m3 = float(meter_state.state)
+        except (ValueError, TypeError):
+            self._attr_native_value = None
+            self._attr_available = False
+            self.async_write_ha_state()
+            return
+
+        self._attr_native_value = round(m3 * store.gcv, 3)
+        self._attr_available = True
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
