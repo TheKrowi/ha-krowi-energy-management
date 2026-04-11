@@ -206,8 +206,8 @@ NAMES: dict[tuple[str, str], str] = {
     # Gas GCV and m³ sensor entities
     (UID_GAS_CALORIFIC_VALUE, LANG_EN): "Calorific value",
     (UID_GAS_CALORIFIC_VALUE, LANG_NL): "Calorische waarde",
-    (UID_GAS_PRICE_M3, LANG_EN): "Current price (€/m³)",
-    (UID_GAS_PRICE_M3, LANG_NL): "Huidige prijs (€/m³)",
+    (UID_GAS_PRICE_M3, LANG_EN): "Current price (m³)",
+    (UID_GAS_PRICE_M3, LANG_NL): "Actuele prijs (m³)",
     (UID_GAS_CONSUMPTION_KWH, LANG_EN): "Consumption (kWh)",
     (UID_GAS_CONSUMPTION_KWH, LANG_NL): "Verbruik (kWh)",
 }
