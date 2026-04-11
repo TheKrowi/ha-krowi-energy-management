@@ -11,7 +11,7 @@ from dateutil.relativedelta import relativedelta  # type: ignore
 from homeassistant.core import HomeAssistant, callback  # type: ignore
 from homeassistant.helpers.aiohttp_client import async_get_clientsession  # type: ignore
 from homeassistant.helpers.dispatcher import async_dispatcher_send  # type: ignore
-from homeassistant.helpers.event import async_track_time_change  # type: ignore
+from homeassistant.helpers.event import async_call_later, async_track_time_change  # type: ignore
 from homeassistant.helpers.storage import Store  # type: ignore
 
 from .const import ATRIAS_GCV_API_URL, ATRIAS_SUBSCRIPTION_KEY, DOMAIN, SIGNAL_GCV_UPDATE
@@ -82,6 +82,16 @@ class GcvStore:
         # Fill any missing months (bootstrap on first install; gap-fill after restarts)
         await self._fill_missing_history()
         self._refresh_gcv()
+
+        # If no data was fetched (network not ready at boot), retry after HA has started
+        if self._gcv is None:
+            _LOGGER.debug("GcvStore: no data after initial fill, scheduling startup retry")
+
+            @callback
+            def _startup_retry(_now=None) -> None:
+                self._hass.async_create_task(self._do_refresh())
+
+            self._unsubs.append(async_call_later(hass, 60, _startup_retry))
 
         # Dispatch initial state to sensors
         async_dispatcher_send(self._hass, SIGNAL_GCV_UPDATE)
@@ -211,9 +221,11 @@ class GcvStore:
         """Update self._gcv from the most recent history entry."""
         if not self._history:
             self._gcv = None
+            _LOGGER.debug("GcvStore: history is empty, gcv is None")
             return
         latest_key = max(self._history.keys())
         self._gcv = self._history[latest_key]
+        _LOGGER.info("GcvStore: zone '%s' GCV = %.6f kWh/m³ (from %s)", self._zone, self._gcv, latest_key)
 
     def _prune_history(self) -> None:
         """Keep only the 12 most recent entries."""
