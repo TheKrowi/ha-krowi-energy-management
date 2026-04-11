@@ -1034,7 +1034,7 @@ class GasCurrentPriceM3Sensor(KrowiSensor):
 class GasConsumptionKwhSensor(KrowiSensor):
     """Gas consumption in kWh = gas_meter_m³ × calorific_value."""
 
-    _attr_icon = "mdi:gas-burner"
+    _attr_icon = "mdi:meter-gas"
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
     _attr_native_unit_of_measurement = "kWh"
     _attr_device_class = SensorDeviceClass.ENERGY
