@@ -22,8 +22,24 @@ from homeassistant.helpers.template import Template # type: ignore
 
 from .const import (
     CONF_DOMAIN_TYPE,
+    CONF_ELECTRICITY_EXPORT_T1_METER,
+    CONF_ELECTRICITY_EXPORT_T1_PRICE,
+    CONF_ELECTRICITY_EXPORT_T2_METER,
+    CONF_ELECTRICITY_EXPORT_T2_PRICE,
+    CONF_ELECTRICITY_IMPORT_T1_METER,
+    CONF_ELECTRICITY_IMPORT_T1_PRICE,
+    CONF_ELECTRICITY_IMPORT_T2_METER,
+    CONF_ELECTRICITY_IMPORT_T2_PRICE,
     CONF_EXPORT_TEMPLATE,
     CONF_GAS_METER_ENTITY,
+    DEFAULT_ELECTRICITY_EXPORT_T1_METER,
+    DEFAULT_ELECTRICITY_EXPORT_T1_PRICE,
+    DEFAULT_ELECTRICITY_EXPORT_T2_METER,
+    DEFAULT_ELECTRICITY_EXPORT_T2_PRICE,
+    DEFAULT_ELECTRICITY_IMPORT_T1_METER,
+    DEFAULT_ELECTRICITY_IMPORT_T1_PRICE,
+    DEFAULT_ELECTRICITY_IMPORT_T2_METER,
+    DEFAULT_ELECTRICITY_IMPORT_T2_PRICE,
     DEFAULT_GAS_METER_ENTITY,
     DOMAIN,
     DOMAIN_TYPE_ELECTRICITY,
@@ -38,7 +54,12 @@ from .const import (
     UID_ELECTRICITY_DISTRIBUTION_TRANSPORT,
     UID_ELECTRICITY_ENERGY_CONTRIBUTION,
     UID_ELECTRICITY_EXCISE_DUTY,
+    UID_ELECTRICITY_EXPORT_REVENUE_T1,
+    UID_ELECTRICITY_EXPORT_REVENUE_T2,
     UID_ELECTRICITY_GREEN_ENERGY,
+    UID_ELECTRICITY_IMPORT_COST_T1,
+    UID_ELECTRICITY_IMPORT_COST_T2,
+    UID_ELECTRICITY_NET_COST,
     UID_ELECTRICITY_PRICE_EXPORT,
     UID_ELECTRICITY_PRICE_EXPORT_EUR,
     UID_ELECTRICITY_PRICE_IMPORT,
@@ -47,6 +68,8 @@ from .const import (
     UID_ELECTRICITY_SPOT_CURRENT_PRICE,
     UID_ELECTRICITY_SURCHARGE_FORMULA,
     UID_ELECTRICITY_SURCHARGE_RATE,
+    UID_ELECTRICITY_TOTAL_EXPORT_REVENUE,
+    UID_ELECTRICITY_TOTAL_IMPORT_COST,
     UID_ELECTRICITY_VAT,
     UID_GAS_CALORIFIC_VALUE,
     UID_GAS_CONSUMPTION_KWH,
@@ -93,6 +116,14 @@ async def async_setup_entry(
             name="Electricity",
         )
         export_template_str = effective[CONF_EXPORT_TEMPLATE]
+        import_t1_meter = effective.get(CONF_ELECTRICITY_IMPORT_T1_METER, DEFAULT_ELECTRICITY_IMPORT_T1_METER) or DEFAULT_ELECTRICITY_IMPORT_T1_METER
+        import_t2_meter = effective.get(CONF_ELECTRICITY_IMPORT_T2_METER, DEFAULT_ELECTRICITY_IMPORT_T2_METER) or DEFAULT_ELECTRICITY_IMPORT_T2_METER
+        export_t1_meter = effective.get(CONF_ELECTRICITY_EXPORT_T1_METER, DEFAULT_ELECTRICITY_EXPORT_T1_METER) or DEFAULT_ELECTRICITY_EXPORT_T1_METER
+        export_t2_meter = effective.get(CONF_ELECTRICITY_EXPORT_T2_METER, DEFAULT_ELECTRICITY_EXPORT_T2_METER) or DEFAULT_ELECTRICITY_EXPORT_T2_METER
+        import_t1_price = effective.get(CONF_ELECTRICITY_IMPORT_T1_PRICE, DEFAULT_ELECTRICITY_IMPORT_T1_PRICE) or DEFAULT_ELECTRICITY_IMPORT_T1_PRICE
+        import_t2_price = effective.get(CONF_ELECTRICITY_IMPORT_T2_PRICE, DEFAULT_ELECTRICITY_IMPORT_T2_PRICE) or DEFAULT_ELECTRICITY_IMPORT_T2_PRICE
+        export_t1_price = effective.get(CONF_ELECTRICITY_EXPORT_T1_PRICE, DEFAULT_ELECTRICITY_EXPORT_T1_PRICE) or DEFAULT_ELECTRICITY_EXPORT_T1_PRICE
+        export_t2_price = effective.get(CONF_ELECTRICITY_EXPORT_T2_PRICE, DEFAULT_ELECTRICITY_EXPORT_T2_PRICE) or DEFAULT_ELECTRICITY_EXPORT_T2_PRICE
 
         entities = [
             ElectricitySpotCurrentPriceSensor(hass, entry_id, device_info, language),
@@ -105,6 +136,13 @@ async def async_setup_entry(
             ),
             ElectricityImportPriceEurSensor(hass, entry_id, device_info, language),
             ElectricityExportPriceEurSensor(hass, entry_id, device_info, language),
+            ElectricityImportCostT1Sensor(hass, entry_id, import_t1_meter, import_t1_price, device_info, language),
+            ElectricityImportCostT2Sensor(hass, entry_id, import_t2_meter, import_t2_price, device_info, language),
+            ElectricityExportRevenueT1Sensor(hass, entry_id, export_t1_meter, export_t1_price, device_info, language),
+            ElectricityExportRevenueT2Sensor(hass, entry_id, export_t2_meter, export_t2_price, device_info, language),
+            ElectricityTotalImportCostSensor(hass, entry_id, device_info, language),
+            ElectricityTotalExportRevenueSensor(hass, entry_id, device_info, language),
+            ElectricityNetCostSensor(hass, entry_id, device_info, language),
         ]
     elif domain_type == DOMAIN_TYPE_GAS:
         device_info = DeviceInfo(
@@ -1213,3 +1251,283 @@ class GasTotalCostSensor(KrowiSensor, RestoreEntity):
                     pass
 
         await super().async_added_to_hass()
+
+
+# ---------------------------------------------------------------------------
+# Electricity per-tariff cost/revenue accumulator sensors
+# ---------------------------------------------------------------------------
+
+class _ElectricityTariffCostSensor(KrowiSensor, RestoreEntity):
+    """Base class for per-tariff electricity cost/revenue accumulator sensors."""
+
+    _attr_icon = "mdi:cash-multiple"
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_native_unit_of_measurement = "EUR"
+
+    def __init__(
+        self,
+        hass,
+        entry_id: str,
+        meter_entity: str,
+        price_entity: str,
+        uid: str,
+        device_info,
+        language=LANG_EN,
+    ):
+        super().__init__(hass, entry_id, device_info)
+        self._meter_entity = meter_entity or ""
+        self._price_entity = price_entity or ""
+        self._attr_unique_id = uid
+        self.entity_id = f"sensor.{uid}"
+        self._attr_name = NAMES.get((uid, language), NAMES[(uid, LANG_EN)])
+        self._last_kwh: float | None = None
+        self._last_known_price: float | None = None
+
+    def _get_price(self) -> float | None:
+        return safe_float_state(self.hass, self._price_entity) if self._price_entity else None
+
+    def _subscribe_listeners(self) -> None:
+        if self._meter_entity:
+            self._track([self._meter_entity], self._handle_state_change)
+
+    @callback
+    def _handle_state_change(self, event) -> None:
+        self._update()
+
+    def _update(self) -> None:
+        if not self._meter_entity:
+            self._attr_available = False
+            self.async_write_ha_state()
+            return
+
+        meter_state = self.hass.states.get(self._meter_entity)
+        if meter_state is None or meter_state.state in ("unavailable", "unknown"):
+            return
+
+        try:
+            new_kwh = float(meter_state.state)
+        except (ValueError, TypeError):
+            return
+
+        # Anchor on first reading
+        if self._last_kwh is None:
+            self._last_kwh = new_kwh
+            return
+
+        delta_kwh = new_kwh - self._last_kwh
+
+        # Negative delta = meter replaced — re-anchor without adding cost
+        if delta_kwh < 0:
+            self._last_kwh = new_kwh
+            return
+
+        if delta_kwh == 0:
+            return
+
+        # Price: use current or fall back to last known; skip if neither available
+        price = self._get_price()
+        if price is not None:
+            self._last_known_price = price
+        elif self._last_known_price is not None:
+            price = self._last_known_price
+        else:
+            return
+
+        current_total = self._attr_native_value or 0.0
+        self._attr_native_value = round(current_total + delta_kwh * price, 5)
+        self._attr_available = True
+        self._last_kwh = new_kwh
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        last_state = await self.async_get_last_state()
+        if last_state is not None and last_state.state not in ("unavailable", "unknown", "None", None):
+            try:
+                self._attr_native_value = round(float(last_state.state), 5)
+                self._attr_available = True
+            except (ValueError, TypeError):
+                self._attr_native_value = 0.0
+        else:
+            self._attr_native_value = 0.0
+
+        # Anchor _last_kwh to current meter reading (don't cost the restart gap)
+        if self._meter_entity:
+            meter_state = self.hass.states.get(self._meter_entity)
+            if meter_state is not None and meter_state.state not in ("unavailable", "unknown"):
+                try:
+                    self._last_kwh = float(meter_state.state)
+                except (ValueError, TypeError):
+                    pass
+
+        await super().async_added_to_hass()
+
+
+class ElectricityImportCostT1Sensor(_ElectricityTariffCostSensor):
+    """Accumulated import cost for tariff 1."""
+
+    def __init__(self, hass, entry_id, meter_entity, price_entity, device_info, language=LANG_EN):
+        super().__init__(hass, entry_id, meter_entity, price_entity, UID_ELECTRICITY_IMPORT_COST_T1, device_info, language)
+
+
+class ElectricityImportCostT2Sensor(_ElectricityTariffCostSensor):
+    """Accumulated import cost for tariff 2."""
+
+    def __init__(self, hass, entry_id, meter_entity, price_entity, device_info, language=LANG_EN):
+        super().__init__(hass, entry_id, meter_entity, price_entity, UID_ELECTRICITY_IMPORT_COST_T2, device_info, language)
+
+
+class ElectricityExportRevenueT1Sensor(_ElectricityTariffCostSensor):
+    """Accumulated export revenue for tariff 1."""
+
+    def __init__(self, hass, entry_id, meter_entity, price_entity, device_info, language=LANG_EN):
+        super().__init__(hass, entry_id, meter_entity, price_entity, UID_ELECTRICITY_EXPORT_REVENUE_T1, device_info, language)
+
+
+class ElectricityExportRevenueT2Sensor(_ElectricityTariffCostSensor):
+    """Accumulated export revenue for tariff 2."""
+
+    def __init__(self, hass, entry_id, meter_entity, price_entity, device_info, language=LANG_EN):
+        super().__init__(hass, entry_id, meter_entity, price_entity, UID_ELECTRICITY_EXPORT_REVENUE_T2, device_info, language)
+
+
+# ---------------------------------------------------------------------------
+# Electricity derived aggregate sensors
+# ---------------------------------------------------------------------------
+
+class ElectricityTotalImportCostSensor(KrowiSensor):
+    """Total import cost = T1 + T2 (derived, no own accumulator)."""
+
+    _attr_icon = "mdi:cash-plus"
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_native_unit_of_measurement = "EUR"
+
+    def __init__(self, hass, entry_id, device_info, language=LANG_EN):
+        super().__init__(hass, entry_id, device_info)
+        self._attr_unique_id = UID_ELECTRICITY_TOTAL_IMPORT_COST
+        self.entity_id = f"sensor.{UID_ELECTRICITY_TOTAL_IMPORT_COST}"
+        self._attr_name = NAMES.get(
+            (UID_ELECTRICITY_TOTAL_IMPORT_COST, language),
+            NAMES[(UID_ELECTRICITY_TOTAL_IMPORT_COST, LANG_EN)],
+        )
+
+    def _subscribe_listeners(self) -> None:
+        t1_id = _resolve_entity_id(self.hass, "sensor", UID_ELECTRICITY_IMPORT_COST_T1)
+        t2_id = _resolve_entity_id(self.hass, "sensor", UID_ELECTRICITY_IMPORT_COST_T2)
+        ids = [i for i in [t1_id, t2_id] if i]
+        if ids:
+            self._track(ids, self._handle_state_change)
+
+    @callback
+    def _handle_state_change(self, event) -> None:
+        self._update()
+
+    def _update(self) -> None:
+        t1_id = _resolve_entity_id(self.hass, "sensor", UID_ELECTRICITY_IMPORT_COST_T1)
+        t2_id = _resolve_entity_id(self.hass, "sensor", UID_ELECTRICITY_IMPORT_COST_T2)
+        t1 = safe_float_state(self.hass, t1_id) if t1_id else None
+        t2 = safe_float_state(self.hass, t2_id) if t2_id else None
+        if t1 is None and t2 is None:
+            self._attr_native_value = None
+            self._attr_available = False
+        else:
+            self._attr_native_value = round((t1 or 0.0) + (t2 or 0.0), 5)
+            self._attr_available = True
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._update()
+
+
+class ElectricityTotalExportRevenueSensor(KrowiSensor):
+    """Total export revenue = T1 + T2 (derived, no own accumulator)."""
+
+    _attr_icon = "mdi:cash-minus"
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_native_unit_of_measurement = "EUR"
+
+    def __init__(self, hass, entry_id, device_info, language=LANG_EN):
+        super().__init__(hass, entry_id, device_info)
+        self._attr_unique_id = UID_ELECTRICITY_TOTAL_EXPORT_REVENUE
+        self.entity_id = f"sensor.{UID_ELECTRICITY_TOTAL_EXPORT_REVENUE}"
+        self._attr_name = NAMES.get(
+            (UID_ELECTRICITY_TOTAL_EXPORT_REVENUE, language),
+            NAMES[(UID_ELECTRICITY_TOTAL_EXPORT_REVENUE, LANG_EN)],
+        )
+
+    def _subscribe_listeners(self) -> None:
+        t1_id = _resolve_entity_id(self.hass, "sensor", UID_ELECTRICITY_EXPORT_REVENUE_T1)
+        t2_id = _resolve_entity_id(self.hass, "sensor", UID_ELECTRICITY_EXPORT_REVENUE_T2)
+        ids = [i for i in [t1_id, t2_id] if i]
+        if ids:
+            self._track(ids, self._handle_state_change)
+
+    @callback
+    def _handle_state_change(self, event) -> None:
+        self._update()
+
+    def _update(self) -> None:
+        t1_id = _resolve_entity_id(self.hass, "sensor", UID_ELECTRICITY_EXPORT_REVENUE_T1)
+        t2_id = _resolve_entity_id(self.hass, "sensor", UID_ELECTRICITY_EXPORT_REVENUE_T2)
+        t1 = safe_float_state(self.hass, t1_id) if t1_id else None
+        t2 = safe_float_state(self.hass, t2_id) if t2_id else None
+        if t1 is None and t2 is None:
+            self._attr_native_value = None
+            self._attr_available = False
+        else:
+            self._attr_native_value = round((t1 or 0.0) + (t2 or 0.0), 5)
+            self._attr_available = True
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._update()
+
+
+class ElectricityNetCostSensor(KrowiSensor):
+    """Net electricity cost = total import − total export (can go negative)."""
+
+    _attr_icon = "mdi:cash-sync"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_native_unit_of_measurement = "EUR"
+
+    def __init__(self, hass, entry_id, device_info, language=LANG_EN):
+        super().__init__(hass, entry_id, device_info)
+        self._attr_unique_id = UID_ELECTRICITY_NET_COST
+        self.entity_id = f"sensor.{UID_ELECTRICITY_NET_COST}"
+        self._attr_name = NAMES.get(
+            (UID_ELECTRICITY_NET_COST, language),
+            NAMES[(UID_ELECTRICITY_NET_COST, LANG_EN)],
+        )
+
+    def _subscribe_listeners(self) -> None:
+        import_id = _resolve_entity_id(self.hass, "sensor", UID_ELECTRICITY_TOTAL_IMPORT_COST)
+        export_id = _resolve_entity_id(self.hass, "sensor", UID_ELECTRICITY_TOTAL_EXPORT_REVENUE)
+        ids = [i for i in [import_id, export_id] if i]
+        if ids:
+            self._track(ids, self._handle_state_change)
+
+    @callback
+    def _handle_state_change(self, event) -> None:
+        self._update()
+
+    def _update(self) -> None:
+        import_id = _resolve_entity_id(self.hass, "sensor", UID_ELECTRICITY_TOTAL_IMPORT_COST)
+        export_id = _resolve_entity_id(self.hass, "sensor", UID_ELECTRICITY_TOTAL_EXPORT_REVENUE)
+        total_import = safe_float_state(self.hass, import_id) if import_id else None
+        total_export = safe_float_state(self.hass, export_id) if export_id else None
+        if total_import is None or total_export is None:
+            self._attr_native_value = None
+            self._attr_available = False
+        else:
+            self._attr_native_value = round(total_import - total_export, 5)
+            self._attr_available = True
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._update()

@@ -44,6 +44,15 @@ UID_ELECTRICITY_PRICE_EXPORT_EUR = "electricity_current_price_export_eur"
 UID_ELECTRICITY_SPOT_CURRENT_PRICE = "electricity_spot_current_price"
 UID_ELECTRICITY_SPOT_AVERAGE_PRICE = "electricity_spot_average_price"
 
+# Unique ID suffixes — electricity cost sensors
+UID_ELECTRICITY_IMPORT_COST_T1 = "electricity_import_cost_tariff_1"
+UID_ELECTRICITY_IMPORT_COST_T2 = "electricity_import_cost_tariff_2"
+UID_ELECTRICITY_EXPORT_REVENUE_T1 = "electricity_export_revenue_tariff_1"
+UID_ELECTRICITY_EXPORT_REVENUE_T2 = "electricity_export_revenue_tariff_2"
+UID_ELECTRICITY_TOTAL_IMPORT_COST = "electricity_total_import_cost"
+UID_ELECTRICITY_TOTAL_EXPORT_REVENUE = "electricity_total_export_revenue"
+UID_ELECTRICITY_NET_COST = "electricity_net_cost"
+
 # Unique ID suffixes — gas sensors
 UID_GAS_SURCHARGE_RATE = "gas_tariff_total_surcharge"
 UID_GAS_SURCHARGE_FORMULA = "gas_tariff_total_surcharge_formula"
@@ -60,6 +69,25 @@ UID_GAS_TOTAL_COST = "gas_total_cost"
 SIGNAL_NORDPOOL_UPDATE = "krowi_energy_management_nordpool_update"
 SIGNAL_TTF_DAM_UPDATE = "krowi_energy_management_ttf_dam_update"
 SIGNAL_GCV_UPDATE = "krowi_energy_management_gcv_update"
+
+# Electricity meter and price entity config keys and defaults
+CONF_ELECTRICITY_IMPORT_T1_METER = "electricity_import_t1_meter_entity"
+CONF_ELECTRICITY_IMPORT_T2_METER = "electricity_import_t2_meter_entity"
+CONF_ELECTRICITY_EXPORT_T1_METER = "electricity_export_t1_meter_entity"
+CONF_ELECTRICITY_EXPORT_T2_METER = "electricity_export_t2_meter_entity"
+CONF_ELECTRICITY_IMPORT_T1_PRICE = "electricity_import_t1_price_entity"
+CONF_ELECTRICITY_IMPORT_T2_PRICE = "electricity_import_t2_price_entity"
+CONF_ELECTRICITY_EXPORT_T1_PRICE = "electricity_export_t1_price_entity"
+CONF_ELECTRICITY_EXPORT_T2_PRICE = "electricity_export_t2_price_entity"
+
+DEFAULT_ELECTRICITY_IMPORT_T1_METER = "sensor.energy_meter_energy_import_tariff_1"
+DEFAULT_ELECTRICITY_IMPORT_T2_METER = "sensor.energy_meter_energy_import_tariff_2"
+DEFAULT_ELECTRICITY_EXPORT_T1_METER = "sensor.energy_meter_energy_export_tariff_1"
+DEFAULT_ELECTRICITY_EXPORT_T2_METER = "sensor.energy_meter_energy_export_tariff_2"
+DEFAULT_ELECTRICITY_IMPORT_T1_PRICE = "sensor.electricity_current_price_import_eur"
+DEFAULT_ELECTRICITY_IMPORT_T2_PRICE = "sensor.electricity_current_price_import_eur"
+DEFAULT_ELECTRICITY_EXPORT_T1_PRICE = "sensor.electricity_current_price_export_eur"
+DEFAULT_ELECTRICITY_EXPORT_T2_PRICE = "sensor.electricity_current_price_export_eur"
 
 # GCV / gas meter config keys and defaults
 CONF_GOS_ZONE = "gos_zone"
@@ -190,6 +218,21 @@ NAMES: dict[tuple[str, str], str] = {
     (UID_ELECTRICITY_SPOT_CURRENT_PRICE, LANG_NL): "Huidige prijs (EPEX SPOT)",
     (UID_ELECTRICITY_SPOT_AVERAGE_PRICE, LANG_EN): "Monthly average price (EPEX SPOT)",
     (UID_ELECTRICITY_SPOT_AVERAGE_PRICE, LANG_NL): "Gemiddelde maandprijs (EPEX SPOT)",
+    # Electricity cost sensors
+    (UID_ELECTRICITY_IMPORT_COST_T1, LANG_EN): "Import cost (tariff 1)",
+    (UID_ELECTRICITY_IMPORT_COST_T1, LANG_NL): "Importkosten (tarief 1)",
+    (UID_ELECTRICITY_IMPORT_COST_T2, LANG_EN): "Import cost (tariff 2)",
+    (UID_ELECTRICITY_IMPORT_COST_T2, LANG_NL): "Importkosten (tarief 2)",
+    (UID_ELECTRICITY_EXPORT_REVENUE_T1, LANG_EN): "Export revenue (tariff 1)",
+    (UID_ELECTRICITY_EXPORT_REVENUE_T1, LANG_NL): "Exportopbrengst (tarief 1)",
+    (UID_ELECTRICITY_EXPORT_REVENUE_T2, LANG_EN): "Export revenue (tariff 2)",
+    (UID_ELECTRICITY_EXPORT_REVENUE_T2, LANG_NL): "Exportopbrengst (tarief 2)",
+    (UID_ELECTRICITY_TOTAL_IMPORT_COST, LANG_EN): "Total import cost",
+    (UID_ELECTRICITY_TOTAL_IMPORT_COST, LANG_NL): "Totale importkosten",
+    (UID_ELECTRICITY_TOTAL_EXPORT_REVENUE, LANG_EN): "Total export revenue",
+    (UID_ELECTRICITY_TOTAL_EXPORT_REVENUE, LANG_NL): "Totale exportopbrengst",
+    (UID_ELECTRICITY_NET_COST, LANG_EN): "Net electricity cost",
+    (UID_ELECTRICITY_NET_COST, LANG_NL): "Netto elektriciteitskosten",
     # Gas sensor entities
     (UID_GAS_SURCHARGE_RATE, LANG_EN): "Total surcharge",
     (UID_GAS_SURCHARGE_RATE, LANG_NL): "Totale toeslag",

@@ -10,11 +10,27 @@ from homeassistant.helpers import entity_registry as er, selector # type: ignore
 
 from .const import (
     CONF_DOMAIN_TYPE,
+    CONF_ELECTRICITY_EXPORT_T1_METER,
+    CONF_ELECTRICITY_EXPORT_T1_PRICE,
+    CONF_ELECTRICITY_EXPORT_T2_METER,
+    CONF_ELECTRICITY_EXPORT_T2_PRICE,
+    CONF_ELECTRICITY_IMPORT_T1_METER,
+    CONF_ELECTRICITY_IMPORT_T1_PRICE,
+    CONF_ELECTRICITY_IMPORT_T2_METER,
+    CONF_ELECTRICITY_IMPORT_T2_PRICE,
     CONF_EXPORT_TEMPLATE,
     CONF_GAS_METER_ENTITY,
     CONF_GOS_ZONE,
     CONF_LANGUAGE,
     CONF_LOW_PRICE_CUTOFF,
+    DEFAULT_ELECTRICITY_EXPORT_T1_METER,
+    DEFAULT_ELECTRICITY_EXPORT_T1_PRICE,
+    DEFAULT_ELECTRICITY_EXPORT_T2_METER,
+    DEFAULT_ELECTRICITY_EXPORT_T2_PRICE,
+    DEFAULT_ELECTRICITY_IMPORT_T1_METER,
+    DEFAULT_ELECTRICITY_IMPORT_T1_PRICE,
+    DEFAULT_ELECTRICITY_IMPORT_T2_METER,
+    DEFAULT_ELECTRICITY_IMPORT_T2_PRICE,
     DEFAULT_EXPORT_TEMPLATE,
     DEFAULT_GAS_METER_ENTITY,
     DEFAULT_GOS_ZONE,
@@ -66,6 +82,38 @@ def _electricity_options_schema(defaults: dict | None = None) -> vol.Schema:
                     mode=selector.NumberSelectorMode.BOX,
                 )
             ),
+            vol.Optional(
+                CONF_ELECTRICITY_IMPORT_T1_METER,
+                default=d.get(CONF_ELECTRICITY_IMPORT_T1_METER, DEFAULT_ELECTRICITY_IMPORT_T1_METER),
+            ): selector.EntitySelector(),
+            vol.Optional(
+                CONF_ELECTRICITY_IMPORT_T2_METER,
+                default=d.get(CONF_ELECTRICITY_IMPORT_T2_METER, DEFAULT_ELECTRICITY_IMPORT_T2_METER),
+            ): selector.EntitySelector(),
+            vol.Optional(
+                CONF_ELECTRICITY_EXPORT_T1_METER,
+                default=d.get(CONF_ELECTRICITY_EXPORT_T1_METER, DEFAULT_ELECTRICITY_EXPORT_T1_METER),
+            ): selector.EntitySelector(),
+            vol.Optional(
+                CONF_ELECTRICITY_EXPORT_T2_METER,
+                default=d.get(CONF_ELECTRICITY_EXPORT_T2_METER, DEFAULT_ELECTRICITY_EXPORT_T2_METER),
+            ): selector.EntitySelector(),
+            vol.Optional(
+                CONF_ELECTRICITY_IMPORT_T1_PRICE,
+                default=d.get(CONF_ELECTRICITY_IMPORT_T1_PRICE, DEFAULT_ELECTRICITY_IMPORT_T1_PRICE),
+            ): selector.EntitySelector(),
+            vol.Optional(
+                CONF_ELECTRICITY_IMPORT_T2_PRICE,
+                default=d.get(CONF_ELECTRICITY_IMPORT_T2_PRICE, DEFAULT_ELECTRICITY_IMPORT_T2_PRICE),
+            ): selector.EntitySelector(),
+            vol.Optional(
+                CONF_ELECTRICITY_EXPORT_T1_PRICE,
+                default=d.get(CONF_ELECTRICITY_EXPORT_T1_PRICE, DEFAULT_ELECTRICITY_EXPORT_T1_PRICE),
+            ): selector.EntitySelector(),
+            vol.Optional(
+                CONF_ELECTRICITY_EXPORT_T2_PRICE,
+                default=d.get(CONF_ELECTRICITY_EXPORT_T2_PRICE, DEFAULT_ELECTRICITY_EXPORT_T2_PRICE),
+            ): selector.EntitySelector(),
         }
     )
 
