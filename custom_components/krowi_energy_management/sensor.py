@@ -208,14 +208,13 @@ class ElectricitySpotCurrentPriceSensor(KrowiSensor):
             "today": store.today,
             "tomorrow": store.tomorrow,
             "tomorrow_valid": store.tomorrow_valid,
-            "average": store.average,
             "low_price": store.low_price,
             "price_percent_to_average": store.price_percent_to_average,
         }
 
 
 class ElectricitySpotAverageSensor(KrowiSensor):
-    """Today's average Nord Pool BE spot price in c€/kWh."""
+    """Rolling calendar-month average Nord Pool BE spot price in c€/kWh."""
 
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = UNIT_ELECTRICITY
@@ -242,13 +241,25 @@ class ElectricitySpotAverageSensor(KrowiSensor):
     @callback
     def _on_update(self) -> None:
         store = self._get_store()
-        if store is None or store.average is None:
+        if store is None or store.monthly_average is None:
             self._attr_native_value = None
             self._attr_available = False
         else:
-            self._attr_native_value = store.average
+            self._attr_native_value = store.monthly_average
             self._attr_available = True
         self.async_write_ha_state()
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        store = self._get_store()
+        if store is None:
+            return {"history": {}}
+        return {
+            "history": {
+                d.isoformat(): v
+                for d, v in store._daily_avg_buffer.items()
+            },
+        }
 
 
 # ---------------------------------------------------------------------------

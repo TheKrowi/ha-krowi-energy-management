@@ -13,6 +13,7 @@ from .const import (
     CONF_EXPORT_TEMPLATE,
     CONF_LANGUAGE,
     CONF_LOW_PRICE_CUTOFF,
+    DEFAULT_EXPORT_TEMPLATE,
     DEFAULT_LOW_PRICE_CUTOFF,
     DOMAIN,
     DOMAIN_TYPE_ELECTRICITY,
@@ -31,7 +32,7 @@ def _electricity_schema(defaults: dict | None = None) -> vol.Schema:
                 CONF_EXPORT_TEMPLATE,
                 default=d.get(
                     CONF_EXPORT_TEMPLATE,
-                    "{{ (states('sensor.electricity_spot_average_price') | float(0) * 0.94 - 0.017) | round(5) }}",
+                    DEFAULT_EXPORT_TEMPLATE,
                 ),
             ): str,
         }
@@ -46,7 +47,7 @@ def _electricity_options_schema(defaults: dict | None = None) -> vol.Schema:
                 CONF_EXPORT_TEMPLATE,
                 default=d.get(
                     CONF_EXPORT_TEMPLATE,
-                    "{{ (states('sensor.electricity_spot_average_price') | float(0) * 0.94 - 0.017) | round(5) }}",
+                    DEFAULT_EXPORT_TEMPLATE,
                 ),
             ): str,
             vol.Optional(

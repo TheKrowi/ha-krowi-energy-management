@@ -108,8 +108,8 @@ NAMES: dict[tuple[str, str], str] = {
     # Electricity spot sensors
     (UID_ELECTRICITY_SPOT_CURRENT_PRICE, LANG_EN): "Current price (EPEX SPOT)",
     (UID_ELECTRICITY_SPOT_CURRENT_PRICE, LANG_NL): "Huidige prijs (EPEX SPOT)",
-    (UID_ELECTRICITY_SPOT_AVERAGE_PRICE, LANG_EN): "Daily average price (EPEX SPOT)",
-    (UID_ELECTRICITY_SPOT_AVERAGE_PRICE, LANG_NL): "Gemiddelde dagprijs (EPEX SPOT)",
+    (UID_ELECTRICITY_SPOT_AVERAGE_PRICE, LANG_EN): "Monthly average price (EPEX SPOT)",
+    (UID_ELECTRICITY_SPOT_AVERAGE_PRICE, LANG_NL): "Gemiddelde maandprijs (EPEX SPOT)",
     # Gas sensor entities
     (UID_GAS_SURCHARGE_RATE, LANG_EN): "Total surcharge",
     (UID_GAS_SURCHARGE_RATE, LANG_NL): "Totale toeslag",

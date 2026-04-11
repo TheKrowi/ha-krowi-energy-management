@@ -11,6 +11,8 @@ The component SHALL expose a sensor with unique ID `electricity_spot_current_pri
 
 `native_unit_of_measurement` SHALL be `"c€/kWh"`. `state_class` SHALL be `SensorStateClass.MEASUREMENT`. The sensor SHALL update on every `SIGNAL_NORDPOOL_UPDATE` dispatch. The sensor SHALL be `unavailable` when `store.current_price` is `None`.
 
+The sensor's `extra_state_attributes` SHALL contain: `today`, `tomorrow`, `tomorrow_valid`, `low_price`, `price_percent_to_average`. The `average` attribute SHALL NOT be present.
+
 #### Scenario: Sensor reports current slot price
 - **WHEN** the 15-min tick fires and `store.current_price = 7.692`
 - **THEN** `electricity_spot_current_price` state SHALL be `7.692`
@@ -25,15 +27,10 @@ The component SHALL expose a sensor with unique ID `electricity_spot_current_pri
 - **WHEN** language is set to `"en"`
 - **THEN** the sensor friendly name SHALL be `"Current price (EPEX SPOT)"`
 
-#### Scenario: Sensor state attributes are populated
+#### Scenario: Sensor state attributes are populated without average
 - **WHEN** `store.data_today` contains 96 slots and `store.data_tomorrow` contains 96 slots
-- **THEN** the sensor's `extra_state_attributes` SHALL contain:
-  - `today`: list of 96 float values in chronological order
-  - `tomorrow`: list of 96 float values in chronological order
-  - `tomorrow_valid`: `True`
-  - `average`: mean of today's 96 values rounded to 5 decimal places
-  - `low_price`: bool
-  - `price_percent_to_average`: float rounded to 5 decimal places
+- **THEN** the sensor's `extra_state_attributes` SHALL contain `today`, `tomorrow`, `tomorrow_valid`, `low_price`, `price_percent_to_average`
+- **THEN** `extra_state_attributes` SHALL NOT contain an `average` key
 
 #### Scenario: Tomorrow attributes when not yet available
 - **WHEN** `store.tomorrow_valid` is `False`
@@ -47,27 +44,34 @@ The component SHALL expose a sensor with unique ID `electricity_spot_current_pri
 ---
 
 ### Requirement: Electricity spot average price sensor
-The component SHALL expose a sensor with unique ID `electricity_spot_average_price`, English display name "Daily average price (EPEX SPOT)", and Dutch display name "Gemiddelde dagprijs (EPEX SPOT)" that reports the mean of all today's Nord Pool BE price slots in `c€/kWh`.
+The component SHALL expose a sensor with unique ID `electricity_spot_average_price`, English display name "Monthly average price (EPEX SPOT)", and Dutch display name "Gemiddelde maandprijs (EPEX SPOT)" that reports the rolling calendar-month average of Nord Pool BE spot prices in `c€/kWh`.
 
-`native_unit_of_measurement` SHALL be `"c€/kWh"`. `state_class` SHALL be `SensorStateClass.MEASUREMENT`. The sensor SHALL update on every `SIGNAL_NORDPOOL_UPDATE` dispatch. The sensor SHALL be `unavailable` when `store.average` is `None`.
+`native_unit_of_measurement` SHALL be `"c€/kWh"`. `state_class` SHALL be `SensorStateClass.MEASUREMENT`. The sensor SHALL update on every `SIGNAL_NORDPOOL_UPDATE` dispatch. The sensor SHALL be `unavailable` when `store.monthly_average` is `None`.
 
-#### Scenario: Sensor reports today's average
-- **WHEN** the store has a full 96-slot dataset with `average = 10.41200`
-- **THEN** `electricity_spot_average_price` state SHALL be `10.41200`
+The sensor SHALL expose a `history` attribute containing the completed-day buffer as a dict mapping `"YYYY-MM-DD"` ISO strings to `float` values in `c€/kWh`, covering the calendar-month window excluding today.
+
+#### Scenario: Sensor reports monthly average
+- **WHEN** the store has a full 30-day buffer and today's live average is `9.50000`
+- **THEN** `electricity_spot_average_price` state SHALL be `store.monthly_average`
 
 #### Scenario: Sensor is unavailable when store has no data
-- **WHEN** `store.average` is `None`
+- **WHEN** `store.monthly_average` is `None`
 - **THEN** `electricity_spot_average_price` state SHALL be `unavailable`
 
 #### Scenario: Sensor display name matches language setting
 - **WHEN** language is set to `"nl"`
-- **THEN** the sensor friendly name SHALL be `"Gemiddelde dagprijs (EPEX SPOT)"`
+- **THEN** the sensor friendly name SHALL be `"Gemiddelde maandprijs (EPEX SPOT)"`
 - **WHEN** language is set to `"en"`
-- **THEN** the sensor friendly name SHALL be `"Daily average price (EPEX SPOT)"`
+- **THEN** the sensor friendly name SHALL be `"Monthly average price (EPEX SPOT)"`
 
-#### Scenario: Average updates at midnight when new day data is loaded
-- **WHEN** the midnight fetch completes with a new day's prices
-- **THEN** `electricity_spot_average_price` SHALL update to the new day's mean value
+#### Scenario: Monthly average updates intraday as today's prices evolve
+- **WHEN** the 15-min tick fires and `store.average` changes
+- **THEN** `electricity_spot_average_price` SHALL update to reflect the new `store.monthly_average`
+
+#### Scenario: History attribute contains completed days
+- **WHEN** `store._daily_avg_buffer` contains entries for `2026-03-12` through `2026-04-10`
+- **THEN** the `history` attribute SHALL be `{"2026-03-12": 8.45123, ..., "2026-04-10": 9.87600}`
+- **THEN** today's date SHALL NOT appear as a key in `history`
 
 ---
 
