@@ -8,6 +8,7 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, Sen
 from homeassistant.config_entries import ConfigEntry # type: ignore
 from homeassistant.const import STATE_UNAVAILABLE # type: ignore
 from homeassistant.core import HomeAssistant, callback # type: ignore
+from homeassistant.helpers.restore_state import RestoreEntity  # type: ignore
 from homeassistant.helpers import entity_registry as er # type: ignore
 from homeassistant.helpers.device_registry import DeviceInfo # type: ignore
 from homeassistant.helpers.entity_platform import AddEntitiesCallback # type: ignore
@@ -49,6 +50,7 @@ from .const import (
     UID_ELECTRICITY_VAT,
     UID_GAS_CALORIFIC_VALUE,
     UID_GAS_CONSUMPTION_KWH,
+    UID_GAS_TOTAL_COST,
     UID_GAS_DISTRIBUTION,
     UID_GAS_ENERGY_CONTRIBUTION,
     UID_GAS_EXCISE_DUTY,
@@ -121,6 +123,7 @@ async def async_setup_entry(
             GasCalorificValueSensor(hass, entry_id, device_info, language),
             GasCurrentPriceM3Sensor(hass, entry_id, device_info, language),
             GasConsumptionKwhSensor(hass, entry_id, gas_meter_entity, device_info, language),
+            GasTotalCostSensor(hass, entry_id, gas_meter_entity, device_info, language),
         ]
     else:
         return
@@ -1096,3 +1099,117 @@ class GasConsumptionKwhSensor(KrowiSensor):
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
         self._update()
+
+
+# ---------------------------------------------------------------------------
+# Gas total cost sensor (accumulated EUR via RestoreEntity)
+# ---------------------------------------------------------------------------
+
+class GasTotalCostSensor(KrowiSensor, RestoreEntity):
+    """Accumulated gas cost in EUR = Σ(Δm³ × GCV × price_EUR_per_kWh)."""
+
+    _attr_icon = "mdi:cash-multiple"
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_native_unit_of_measurement = "EUR"
+
+    def __init__(self, hass, entry_id, gas_meter_entity: str, device_info, language=LANG_EN):
+        super().__init__(hass, entry_id, device_info)
+        self._gas_meter_entity = gas_meter_entity
+        self._attr_unique_id = UID_GAS_TOTAL_COST
+        self.entity_id = f"sensor.{UID_GAS_TOTAL_COST}"
+        self._attr_name = NAMES.get(
+            (UID_GAS_TOTAL_COST, language),
+            NAMES[(UID_GAS_TOTAL_COST, LANG_EN)],
+        )
+        self._last_m3: float | None = None
+        self._last_known_price: float | None = None
+
+    def _get_store(self):
+        return self.hass.data.get(DOMAIN, {}).get("gcv_store")
+
+    def _get_price_eur(self) -> float | None:
+        price_id = _resolve_entity_id(self.hass, "sensor", UID_GAS_PRICE_EUR)
+        return safe_float_state(self.hass, price_id) if price_id else None
+
+    def _subscribe_listeners(self) -> None:
+        if self._gas_meter_entity:
+            self._track([self._gas_meter_entity], self._handle_state_change)
+
+    @callback
+    def _handle_state_change(self, event) -> None:
+        self._update()
+
+    def _update(self) -> None:
+        if not self._gas_meter_entity:
+            return
+
+        # Read current meter state — skip tick if unavailable
+        meter_state = self.hass.states.get(self._gas_meter_entity)
+        if meter_state is None or meter_state.state in ("unavailable", "unknown"):
+            return
+
+        try:
+            new_m3 = float(meter_state.state)
+        except (ValueError, TypeError):
+            return
+
+        # Anchor on first reading
+        if self._last_m3 is None:
+            self._last_m3 = new_m3
+            return
+
+        delta_m3 = new_m3 - self._last_m3
+
+        # Negative delta = meter replaced — re-anchor without adding cost
+        if delta_m3 < 0:
+            self._last_m3 = new_m3
+            return
+
+        # No consumption — nothing to do
+        if delta_m3 == 0:
+            return
+
+        # GCV required — skip tick if unavailable
+        store = self._get_store()
+        if store is None or store.gcv is None:
+            return
+
+        # Price: use current or fall back to last known; skip if neither available
+        price = self._get_price_eur()
+        if price is not None:
+            self._last_known_price = price
+        elif self._last_known_price is not None:
+            price = self._last_known_price
+        else:
+            return
+
+        current_total = self._attr_native_value or 0.0
+        increment = delta_m3 * store.gcv * price
+        self._attr_native_value = round(current_total + increment, 5)
+        self._attr_available = True
+        self._last_m3 = new_m3
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        # Restore accumulated total from prior state
+        last_state = await self.async_get_last_state()
+        if last_state is not None and last_state.state not in ("unavailable", "unknown", "None", None):
+            try:
+                self._attr_native_value = round(float(last_state.state), 5)
+                self._attr_available = True
+            except (ValueError, TypeError):
+                self._attr_native_value = 0.0
+        else:
+            self._attr_native_value = 0.0
+
+        # Anchor _last_m3 to current meter reading (don't cost the restart gap)
+        if self._gas_meter_entity:
+            meter_state = self.hass.states.get(self._gas_meter_entity)
+            if meter_state is not None and meter_state.state not in ("unavailable", "unknown"):
+                try:
+                    self._last_m3 = float(meter_state.state)
+                except (ValueError, TypeError):
+                    pass
+
+        await super().async_added_to_hass()

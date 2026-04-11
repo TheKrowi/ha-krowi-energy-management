@@ -54,6 +54,7 @@ UID_GAS_SPOT_AVERAGE_PRICE = "gas_spot_average_price"
 UID_GAS_CALORIFIC_VALUE = "gas_calorific_value"
 UID_GAS_PRICE_M3 = "gas_current_price_m3"
 UID_GAS_CONSUMPTION_KWH = "gas_consumption_kwh"
+UID_GAS_TOTAL_COST = "gas_total_cost"
 
 # Dispatcher signals
 SIGNAL_NORDPOOL_UPDATE = "krowi_energy_management_nordpool_update"
@@ -210,4 +211,6 @@ NAMES: dict[tuple[str, str], str] = {
     (UID_GAS_PRICE_M3, LANG_NL): "Actuele prijs (m³)",
     (UID_GAS_CONSUMPTION_KWH, LANG_EN): "Gas consumption",
     (UID_GAS_CONSUMPTION_KWH, LANG_NL): "Gasverbruik",
+    (UID_GAS_TOTAL_COST, LANG_EN): "Total gas cost",
+    (UID_GAS_TOTAL_COST, LANG_NL): "Totale gaskosten",
 }

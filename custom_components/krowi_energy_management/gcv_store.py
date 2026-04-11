@@ -57,8 +57,8 @@ class GcvStore:
 
     @property
     def history(self) -> dict[str, float]:
-        """12-month rolling history { 'YYYY-MM': float }."""
-        return dict(self._history)
+        """12-month rolling history { 'YYYY-MM': float }, sorted chronologically."""
+        return dict(sorted(self._history.items()))
 
     @property
     def data_is_fresh(self) -> bool:
