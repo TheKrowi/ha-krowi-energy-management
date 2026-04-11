@@ -155,7 +155,7 @@ class GcvStore:
                     _LOGGER.debug("GcvStore: GCV%d%02d.txt not yet published (404)", year, month)
                     return None
                 resp.raise_for_status()
-                text = await resp.text(encoding="utf-8")
+                text = await resp.text(encoding="utf-8-sig")
         except Exception as exc:
             _LOGGER.warning("GcvStore: failed to fetch GCV %d-%02d: %s", year, month, exc)
             return None
@@ -168,7 +168,7 @@ class GcvStore:
         lines = text.splitlines()
         header_idx = None
         for i, line in enumerate(lines):
-            if line.startswith("GCVMonth"):
+            if "GCVMonth" in line:
                 header_idx = i
                 break
         if header_idx is None:
