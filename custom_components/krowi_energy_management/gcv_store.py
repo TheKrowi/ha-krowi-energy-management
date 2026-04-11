@@ -148,9 +148,9 @@ class GcvStore:
         )
         url = f"{ATRIAS_GCV_API_URL}{path}?subscription-key={ATRIAS_SUBSCRIPTION_KEY}"
 
-        session = async_get_clientsession(self._hass)
+        session = async_get_clientsession(self._hass, verify_ssl=False)
         try:
-            async with session.get(url, ssl=False) as resp:
+            async with session.get(url) as resp:
                 if resp.status == 404:
                     _LOGGER.debug("GcvStore: GCV%d%02d.txt not yet published (404)", year, month)
                     return None
