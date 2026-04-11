@@ -34,4 +34,4 @@
 ## 4. Finalize
 
 - [x] 4.1 Bump `manifest.json` version (`0.0.18` → `0.0.19`)
-- [ ] 4.2 Commit with message `feat: add mdi icons to all entity classes`
+- [x] 4.2 Commit with message `feat: add mdi icons to all entity classes`
