@@ -150,7 +150,7 @@ class GcvStore:
 
         session = async_get_clientsession(self._hass)
         try:
-            async with session.get(url) as resp:
+            async with session.get(url, ssl=False) as resp:
                 if resp.status == 404:
                     _LOGGER.debug("GcvStore: GCV%d%02d.txt not yet published (404)", year, month)
                     return None
