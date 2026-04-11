@@ -39,6 +39,7 @@ class _NumberDescriptor:
     min_value: float
     max_value: float
     step: float
+    icon: str = "mdi:cash-edit"
 
 
 _ELECTRICITY_DESCRIPTORS: list[_NumberDescriptor] = [
@@ -46,7 +47,7 @@ _ELECTRICITY_DESCRIPTORS: list[_NumberDescriptor] = [
     _NumberDescriptor(UID_ELECTRICITY_DISTRIBUTION_TRANSPORT, "UNIT", 0, 9999, 0.00001),
     _NumberDescriptor(UID_ELECTRICITY_EXCISE_DUTY, "UNIT", 0, 9999, 0.00001),
     _NumberDescriptor(UID_ELECTRICITY_ENERGY_CONTRIBUTION, "UNIT", 0, 9999, 0.00001),
-    _NumberDescriptor(UID_ELECTRICITY_VAT, "%", 0, 100, 0.01),
+    _NumberDescriptor(UID_ELECTRICITY_VAT, "%", 0, 100, 0.01, icon="mdi:percent"),
 ]
 
 _GAS_DESCRIPTORS: list[_NumberDescriptor] = [
@@ -54,7 +55,7 @@ _GAS_DESCRIPTORS: list[_NumberDescriptor] = [
     _NumberDescriptor(UID_GAS_TRANSPORT, "UNIT", 0, 9999, 0.00001),
     _NumberDescriptor(UID_GAS_EXCISE_DUTY, "UNIT", 0, 9999, 0.00001),
     _NumberDescriptor(UID_GAS_ENERGY_CONTRIBUTION, "UNIT", 0, 9999, 0.00001),
-    _NumberDescriptor(UID_GAS_VAT, "%", 0, 100, 0.01),
+    _NumberDescriptor(UID_GAS_VAT, "%", 0, 100, 0.01, icon="mdi:percent"),
 ]
 
 
@@ -115,6 +116,7 @@ class KrowiNumberEntity(RestoreNumber, NumberEntity):
         self._attr_unique_id = descriptor.unique_id_suffix
         self.entity_id = f"number.{descriptor.unique_id_suffix}"
         self._attr_name = NAMES.get((descriptor.unique_id_suffix, language), NAMES[(descriptor.unique_id_suffix, LANG_EN)])
+        self._attr_icon = descriptor.icon
         self._attr_native_unit_of_measurement = unit
         self._attr_native_min_value = descriptor.min_value
         self._attr_native_max_value = descriptor.max_value

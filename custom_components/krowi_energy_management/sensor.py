@@ -166,6 +166,7 @@ class KrowiSensor(SensorEntity):
 class ElectricitySpotCurrentPriceSensor(KrowiSensor):
     """Current 15-min Nord Pool BE spot price in c€/kWh."""
 
+    _attr_icon = "mdi:currency-eur"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = UNIT_ELECTRICITY
 
@@ -216,6 +217,7 @@ class ElectricitySpotCurrentPriceSensor(KrowiSensor):
 class ElectricitySpotAverageSensor(KrowiSensor):
     """Rolling calendar-month average Nord Pool BE spot price in c€/kWh."""
 
+    _attr_icon = "mdi:currency-eur"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = UNIT_ELECTRICITY
 
@@ -269,6 +271,7 @@ class ElectricitySpotAverageSensor(KrowiSensor):
 class ElectricitySurchargeSensor(KrowiSensor):
     """Sum of the four electricity rate number entities."""
 
+    _attr_icon = "mdi:cash-lock"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(self, hass, entry_id, unit, device_info, language=LANG_EN):
@@ -323,6 +326,7 @@ class ElectricitySurchargeSensor(KrowiSensor):
 class ElectricitySurchargeFormulaSensor(KrowiSensor):
     """Human-readable formula string for the electricity surcharge."""
 
+    _attr_icon = "mdi:function-variant"
     # No unit, no state_class
     _attr_native_unit_of_measurement = None
     _attr_state_class = None
@@ -384,6 +388,7 @@ class ElectricitySurchargeFormulaSensor(KrowiSensor):
 class ElectricityImportPriceSensor(KrowiSensor):
     """Electricity import price: (spot_price + surcharge) * (1 + vat/100)."""
 
+    _attr_icon = "mdi:currency-eur"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(self, hass, entry_id, device_info, language=LANG_EN):
@@ -455,6 +460,7 @@ class ElectricityImportPriceSensor(KrowiSensor):
 class ElectricityExportPriceSensor(KrowiSensor):
     """Electricity export price rendered from a user-supplied Jinja2 template."""
 
+    _attr_icon = "mdi:currency-eur"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _unsub_template = None
 
@@ -514,6 +520,7 @@ class ElectricityExportPriceSensor(KrowiSensor):
 class ElectricityImportPriceEurSensor(KrowiSensor):
     """Electricity import price in EUR/kWh (import price ÷ 100)."""
 
+    _attr_icon = "mdi:currency-eur"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = "EUR/kWh"
 
@@ -549,6 +556,7 @@ class ElectricityImportPriceEurSensor(KrowiSensor):
 class ElectricityExportPriceEurSensor(KrowiSensor):
     """Electricity export price in EUR/kWh (export price ÷ 100)."""
 
+    _attr_icon = "mdi:currency-eur"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = "EUR/kWh"
 
@@ -588,6 +596,7 @@ class ElectricityExportPriceEurSensor(KrowiSensor):
 class GasSpotTodayPriceSensor(KrowiSensor):
     """Latest daily TTF DAM price in c€/kWh."""
 
+    _attr_icon = "mdi:currency-eur"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = GAS_UNIT
     _attr_device_class = None
@@ -626,6 +635,7 @@ class GasSpotTodayPriceSensor(KrowiSensor):
 class GasSpotAverageSensor(KrowiSensor):
     """30-day average TTF DAM price in c€/kWh."""
 
+    _attr_icon = "mdi:currency-eur"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = GAS_UNIT
     _attr_device_class = None
@@ -668,6 +678,7 @@ class GasSpotAverageSensor(KrowiSensor):
 class GasSurchargeSensor(KrowiSensor):
     """Sum of the four gas rate number entities."""
 
+    _attr_icon = "mdi:cash-lock"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(self, hass, entry_id, unit, device_info, language=LANG_EN):
@@ -724,6 +735,7 @@ class GasSurchargeSensor(KrowiSensor):
 class GasSurchargeFormulaSensor(KrowiSensor):
     """Human-readable formula string for the gas surcharge."""
 
+    _attr_icon = "mdi:function-variant"
     _attr_native_unit_of_measurement = None
     _attr_state_class = None
 
@@ -784,6 +796,7 @@ class GasSurchargeFormulaSensor(KrowiSensor):
 class GasCurrentPriceSensor(KrowiSensor):
     """Gas price: (spot_price + surcharge) * (1 + vat/100), always in c€/kWh."""
 
+    _attr_icon = "mdi:currency-eur"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = GAS_UNIT
 
@@ -859,6 +872,7 @@ class GasCurrentPriceSensor(KrowiSensor):
 class GasCurrentPriceEurSensor(KrowiSensor):
     """Gas current price in EUR/kWh (gas_current_price ÷ 100, always c€/kWh source)."""
 
+    _attr_icon = "mdi:currency-eur"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = "EUR/kWh"
 

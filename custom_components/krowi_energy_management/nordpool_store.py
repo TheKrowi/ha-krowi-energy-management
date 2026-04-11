@@ -5,7 +5,7 @@ import logging
 from datetime import date, datetime, timedelta
 from statistics import mean
 
-from dateutil.relativedelta import relativedelta
+from dateutil.relativedelta import relativedelta # type: ignore
 
 from homeassistant.core import HomeAssistant, callback # type: ignore
 from homeassistant.helpers.aiohttp_client import async_get_clientsession # type: ignore
