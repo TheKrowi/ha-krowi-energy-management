@@ -208,6 +208,6 @@ NAMES: dict[tuple[str, str], str] = {
     (UID_GAS_CALORIFIC_VALUE, LANG_NL): "Calorische waarde",
     (UID_GAS_PRICE_M3, LANG_EN): "Current price (m³)",
     (UID_GAS_PRICE_M3, LANG_NL): "Actuele prijs (m³)",
-    (UID_GAS_CONSUMPTION_KWH, LANG_EN): "Consumption",
-    (UID_GAS_CONSUMPTION_KWH, LANG_NL): "Verbruik",
+    (UID_GAS_CONSUMPTION_KWH, LANG_EN): "Gas consumption",
+    (UID_GAS_CONSUMPTION_KWH, LANG_NL): "Gasverbruik",
 }
