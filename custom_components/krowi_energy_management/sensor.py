@@ -1146,7 +1146,7 @@ class GasConsumptionKwhSensor(KrowiSensor):
 class GasTotalCostSensor(KrowiSensor, RestoreEntity):
     """Accumulated gas cost in EUR = Σ(Δm³ × GCV × price_EUR_per_kWh)."""
 
-    _attr_icon = "mdi:cash-multiple"
+    _attr_icon = "mdi:invoice-text"
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_native_unit_of_measurement = "EUR"
@@ -1260,7 +1260,7 @@ class GasTotalCostSensor(KrowiSensor, RestoreEntity):
 class _ElectricityTariffCostSensor(KrowiSensor, RestoreEntity):
     """Base class for per-tariff electricity cost/revenue accumulator sensors."""
 
-    _attr_icon = "mdi:cash-multiple"
+    _attr_icon = "mdi:invoice-text-minus"
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_native_unit_of_measurement = "EUR"
@@ -1380,12 +1380,16 @@ class ElectricityImportCostT2Sensor(_ElectricityTariffCostSensor):
 class ElectricityExportRevenueT1Sensor(_ElectricityTariffCostSensor):
     """Accumulated export revenue for tariff 1."""
 
+    _attr_icon = "mdi:invoice-text-plus"
+
     def __init__(self, hass, entry_id, meter_entity, price_entity, device_info, language=LANG_EN):
         super().__init__(hass, entry_id, meter_entity, price_entity, UID_ELECTRICITY_EXPORT_REVENUE_T1, device_info, language)
 
 
 class ElectricityExportRevenueT2Sensor(_ElectricityTariffCostSensor):
     """Accumulated export revenue for tariff 2."""
+
+    _attr_icon = "mdi:invoice-text-plus"
 
     def __init__(self, hass, entry_id, meter_entity, price_entity, device_info, language=LANG_EN):
         super().__init__(hass, entry_id, meter_entity, price_entity, UID_ELECTRICITY_EXPORT_REVENUE_T2, device_info, language)
@@ -1398,7 +1402,7 @@ class ElectricityExportRevenueT2Sensor(_ElectricityTariffCostSensor):
 class ElectricityTotalImportCostSensor(KrowiSensor):
     """Total import cost = T1 + T2 (derived, no own accumulator)."""
 
-    _attr_icon = "mdi:cash-plus"
+    _attr_icon = "mdi:invoice-text-minus"
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_native_unit_of_measurement = "EUR"
@@ -1444,7 +1448,7 @@ class ElectricityTotalImportCostSensor(KrowiSensor):
 class ElectricityTotalExportRevenueSensor(KrowiSensor):
     """Total export revenue = T1 + T2 (derived, no own accumulator)."""
 
-    _attr_icon = "mdi:cash-minus"
+    _attr_icon = "mdi:invoice-text-plus"
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_native_unit_of_measurement = "EUR"
@@ -1490,7 +1494,7 @@ class ElectricityTotalExportRevenueSensor(KrowiSensor):
 class ElectricityNetCostSensor(KrowiSensor):
     """Net electricity cost = total import − total export (can go negative)."""
 
-    _attr_icon = "mdi:cash-sync"
+    _attr_icon = "mdi:invoice-text"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_native_unit_of_measurement = "EUR"
