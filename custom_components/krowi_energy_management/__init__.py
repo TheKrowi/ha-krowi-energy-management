@@ -103,20 +103,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await rlp_store.async_start(hass)
         hass.data.setdefault(DOMAIN, {})["rlp_store"] = rlp_store
         store = NordpoolBeStore()
-        await store.async_start(hass, low_price_cutoff, rlp_store)
         hass.data.setdefault(DOMAIN, {})["nordpool_store"] = store
+        await store.async_start(hass, low_price_cutoff, rlp_store)
 
     # For gas entries, start the TTF DAM store and GCV store before platform setup
     if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_GAS:
         effective = {**entry.data, **entry.options}
         ttf_store = TtfDamStore()
-        await ttf_store.async_start(hass)
         hass.data.setdefault(DOMAIN, {})["ttf_dam_store"] = ttf_store
+        await ttf_store.async_start(hass)
 
         gos_zone = effective.get(CONF_GOS_ZONE, DEFAULT_GOS_ZONE)
         gcv_store = GcvStore(gos_zone)
-        await gcv_store.async_start(hass)
         hass.data.setdefault(DOMAIN, {})["gcv_store"] = gcv_store
+        await gcv_store.async_start(hass)
 
     if entry.data.get(CONF_DOMAIN_TYPE) in (DOMAIN_TYPE_ELECTRICITY, DOMAIN_TYPE_GAS, DOMAIN_TYPE_ELECTRICITY_SUPPLIER):
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

@@ -171,7 +171,7 @@ async def async_setup_entry(
         ]
     elif domain_type == DOMAIN_TYPE_ELECTRICITY_SUPPLIER:
         slug = entry.data[CONF_SUPPLIER_SLUG]
-        label = entry.data.get(CONF_SUPPLIER_LABEL, slug)
+        label = effective.get(CONF_SUPPLIER_LABEL, slug)
         catalog_entry = ELECTRICITY_SUPPLIER_CATALOG.get(slug, {})
         import_params = catalog_entry.get("import", {})
         export_params = catalog_entry.get("export", {})

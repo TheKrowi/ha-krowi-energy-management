@@ -327,6 +327,7 @@ class KrowiEnergyManagementOptionsFlow(config_entries.OptionsFlow):
             )
 
         label = user_input.get(CONF_SUPPLIER_LABEL, "").strip() or default_label
+        self.hass.config_entries.async_update_entry(self._entry, title=label)
         return self.async_create_entry(title="", data={CONF_SUPPLIER_LABEL: label})
 
     async def async_step_electricity_options(self, user_input=None):
