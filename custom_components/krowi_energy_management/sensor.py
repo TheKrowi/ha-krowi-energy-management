@@ -750,6 +750,7 @@ class ElectricitySupplierImportPriceSensor(KrowiSensor):
     def _handle_state_change(self, event) -> None:
         self._update()
 
+    @callback
     def _update(self) -> None:
         store = self._get_store()
         if store is None or store.monthly_average_rlp is None:
@@ -851,6 +852,7 @@ class ElectricitySupplierExportPriceSensor(KrowiSensor):
     def _get_store(self):
         return self.hass.data.get(DOMAIN, {}).get("nordpool_store")
 
+    @callback
     def _update(self) -> None:
         store = self._get_store()
         if store is None or store.monthly_average_rlp is None:
