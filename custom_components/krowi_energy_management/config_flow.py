@@ -23,6 +23,8 @@ from .const import (
     CONF_GOS_ZONE,
     CONF_LANGUAGE,
     CONF_LOW_PRICE_CUTOFF,
+    CONF_SUPPLIER_LABEL,
+    CONF_SUPPLIER_SLUG,
     DEFAULT_ELECTRICITY_EXPORT_T1_METER,
     DEFAULT_ELECTRICITY_EXPORT_T1_PRICE,
     DEFAULT_ELECTRICITY_EXPORT_T2_METER,
@@ -37,8 +39,10 @@ from .const import (
     DEFAULT_LOW_PRICE_CUTOFF,
     DOMAIN,
     DOMAIN_TYPE_ELECTRICITY,
+    DOMAIN_TYPE_ELECTRICITY_SUPPLIER,
     DOMAIN_TYPE_GAS,
     DOMAIN_TYPE_SETTINGS,
+    ELECTRICITY_SUPPLIER_CATALOG,
     GOS_ZONE_OPTIONS,
     LANG_EN,
     LANGUAGE_OPTIONS,
@@ -151,7 +155,7 @@ class KrowiEnergyManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Show domain picker menu."""
         return self.async_show_menu(
             step_id="menu",
-            menu_options=[DOMAIN_TYPE_ELECTRICITY, DOMAIN_TYPE_GAS, DOMAIN_TYPE_SETTINGS],
+            menu_options=[DOMAIN_TYPE_ELECTRICITY, DOMAIN_TYPE_GAS, DOMAIN_TYPE_SETTINGS, DOMAIN_TYPE_ELECTRICITY_SUPPLIER],
         )
 
     async def async_step_electricity(self, user_input=None):
@@ -193,7 +197,43 @@ class KrowiEnergyManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data={CONF_DOMAIN_TYPE: DOMAIN_TYPE_GAS},
         )
 
+    async def async_step_electricity_supplier(self, user_input=None):
+        """Handle electricity supplier entry setup."""
+        if user_input is None:
+            catalog_keys = list(ELECTRICITY_SUPPLIER_CATALOG.keys())
+            return self.async_show_form(
+                step_id=DOMAIN_TYPE_ELECTRICITY_SUPPLIER,
+                data_schema=vol.Schema(
+                    {
+                        vol.Required(CONF_SUPPLIER_SLUG): selector.SelectSelector(
+                            selector.SelectSelectorConfig(
+                                options=catalog_keys,
+                                mode=selector.SelectSelectorMode.DROPDOWN,
+                            )
+                        ),
+                        vol.Optional(CONF_SUPPLIER_LABEL, default=""): str,
+                    }
+                ),
+            )
+
+        slug = user_input[CONF_SUPPLIER_SLUG]
+        label = user_input.get(CONF_SUPPLIER_LABEL, "").strip()
+        catalog_entry = ELECTRICITY_SUPPLIER_CATALOG[slug]
+        title = label if label else catalog_entry["name"]
+        return self.async_create_entry(
+            title=title,
+            data={
+                CONF_DOMAIN_TYPE: DOMAIN_TYPE_ELECTRICITY_SUPPLIER,
+                CONF_SUPPLIER_SLUG: slug,
+                CONF_SUPPLIER_LABEL: label or catalog_entry["name"],
+            },
+        )
+
     async def async_step_settings(self, user_input=None):
+        """Handle settings entry setup."""
+        for entry in self._async_current_entries():
+            if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_SETTINGS:
+                return self.async_abort(reason="already_configured")
         """Handle settings entry setup."""
         for entry in self._async_current_entries():
             if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_SETTINGS:

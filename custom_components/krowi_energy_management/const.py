@@ -43,6 +43,7 @@ UID_ELECTRICITY_PRICE_IMPORT_EUR = "electricity_current_price_import_eur"
 UID_ELECTRICITY_PRICE_EXPORT_EUR = "electricity_current_price_export_eur"
 UID_ELECTRICITY_SPOT_CURRENT_PRICE = "electricity_spot_current_price"
 UID_ELECTRICITY_SPOT_AVERAGE_PRICE = "electricity_spot_average_price"
+UID_ELECTRICITY_SPOT_AVERAGE_PRICE_RLP = "electricity_spot_average_price_rlp"
 
 # Unique ID suffixes — electricity cost sensors
 UID_ELECTRICITY_IMPORT_COST_T1 = "electricity_import_cost_tariff_1"
@@ -170,6 +171,36 @@ ISSUE_ENTITY_RENAMED = "entity_renamed_{entry_id}"
 # Settings entry domain type
 DOMAIN_TYPE_SETTINGS = "settings"
 
+# Electricity supplier domain type and config keys
+DOMAIN_TYPE_ELECTRICITY_SUPPLIER = "electricity_supplier"
+CONF_SUPPLIER_SLUG = "supplier_slug"
+CONF_SUPPLIER_LABEL = "supplier_label"
+
+# Electricity supplier sensor UID patterns (format with slug)
+UID_ELECTRICITY_SUPPLIER_IMPORT_PRICE = "electricity_{slug}_import_price"
+UID_ELECTRICITY_SUPPLIER_IMPORT_PRICE_EUR = "electricity_{slug}_import_price_eur"
+UID_ELECTRICITY_SUPPLIER_EXPORT_PRICE = "electricity_{slug}_export_price"
+UID_ELECTRICITY_SUPPLIER_EXPORT_PRICE_EUR = "electricity_{slug}_export_price_eur"
+
+# Electricity supplier catalog
+ELECTRICITY_SUPPLIER_CATALOG: dict[str, dict] = {
+    "mega": {
+        "name": "Mega",
+        "import": {
+            "epex_multiplier": 1.061,
+            "epex_offset_cEur_kwh": 0.0,
+            "includes_surcharge": False,
+            "vat_exempt": False,
+        },
+        "export": {
+            "epex_multiplier": 0.94,
+            "epex_offset_cEur_kwh": -1.7,
+            "includes_surcharge": False,
+            "vat_exempt": True,
+        },
+    },
+}
+
 # Language config key and options
 CONF_LANGUAGE = "language"
 LANG_EN = "en"
@@ -218,6 +249,8 @@ NAMES: dict[tuple[str, str], str] = {
     (UID_ELECTRICITY_SPOT_CURRENT_PRICE, LANG_NL): "Huidige prijs (EPEX SPOT)",
     (UID_ELECTRICITY_SPOT_AVERAGE_PRICE, LANG_EN): "Monthly average price (EPEX SPOT)",
     (UID_ELECTRICITY_SPOT_AVERAGE_PRICE, LANG_NL): "Gemiddelde maandprijs (EPEX SPOT)",
+    (UID_ELECTRICITY_SPOT_AVERAGE_PRICE_RLP, LANG_EN): "Monthly average price RLP-weighted (EPEX SPOT)",
+    (UID_ELECTRICITY_SPOT_AVERAGE_PRICE_RLP, LANG_NL): "Gewogen maandgemiddelde (EPEX SPOT)",
     # Electricity cost sensors
     (UID_ELECTRICITY_IMPORT_COST_T1, LANG_EN): "Import cost (tariff 1)",
     (UID_ELECTRICITY_IMPORT_COST_T1, LANG_NL): "Importkosten (tarief 1)",
@@ -256,4 +289,13 @@ NAMES: dict[tuple[str, str], str] = {
     (UID_GAS_CONSUMPTION_KWH, LANG_NL): "Gasverbruik",
     (UID_GAS_TOTAL_COST, LANG_EN): "Total gas cost",
     (UID_GAS_TOTAL_COST, LANG_NL): "Totale gaskosten",
+    # Electricity supplier sensor display names (slug placeholder; actual key built at runtime)
+    ("electricity_supplier_import_price", LANG_EN): "Import price",
+    ("electricity_supplier_import_price", LANG_NL): "Importprijs",
+    ("electricity_supplier_import_price_eur", LANG_EN): "Import price (EUR/kWh)",
+    ("electricity_supplier_import_price_eur", LANG_NL): "Importprijs (EUR/kWh)",
+    ("electricity_supplier_export_price", LANG_EN): "Export price",
+    ("electricity_supplier_export_price", LANG_NL): "Exportprijs",
+    ("electricity_supplier_export_price_eur", LANG_EN): "Export price (EUR/kWh)",
+    ("electricity_supplier_export_price_eur", LANG_NL): "Exportprijs (EUR/kWh)",
 }

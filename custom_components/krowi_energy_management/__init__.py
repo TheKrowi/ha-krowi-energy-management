@@ -20,9 +20,11 @@ from .const import (
     DEFAULT_LOW_PRICE_CUTOFF,
     DOMAIN,
     DOMAIN_TYPE_ELECTRICITY,
+    DOMAIN_TYPE_ELECTRICITY_SUPPLIER,
     DOMAIN_TYPE_GAS,
 )
 from .nordpool_store import NordpoolBeStore
+from .rlp_store import SynergridRLPStore
 from .ttf_dam_store import TtfDamStore
 from .gcv_store import GcvStore
 
@@ -97,8 +99,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_ELECTRICITY:
         effective = {**entry.data, **entry.options}
         low_price_cutoff = effective.get(CONF_LOW_PRICE_CUTOFF, DEFAULT_LOW_PRICE_CUTOFF)
+        rlp_store = SynergridRLPStore()
+        await rlp_store.async_start(hass)
+        hass.data.setdefault(DOMAIN, {})["rlp_store"] = rlp_store
         store = NordpoolBeStore()
-        await store.async_start(hass, low_price_cutoff)
+        await store.async_start(hass, low_price_cutoff, rlp_store)
         hass.data.setdefault(DOMAIN, {})["nordpool_store"] = store
 
     # For gas entries, start the TTF DAM store and GCV store before platform setup
@@ -113,7 +118,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await gcv_store.async_start(hass)
         hass.data.setdefault(DOMAIN, {})["gcv_store"] = gcv_store
 
-    if entry.data.get(CONF_DOMAIN_TYPE) in (DOMAIN_TYPE_ELECTRICITY, DOMAIN_TYPE_GAS):
+    if entry.data.get(CONF_DOMAIN_TYPE) in (DOMAIN_TYPE_ELECTRICITY, DOMAIN_TYPE_GAS, DOMAIN_TYPE_ELECTRICITY_SUPPLIER):
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
@@ -131,6 +136,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         store = hass.data.get(DOMAIN, {}).pop("nordpool_store", None)
         if store:
             await store.async_stop()
+        rlp_store = hass.data.get(DOMAIN, {}).pop("rlp_store", None)
+        if rlp_store:
+            await rlp_store.async_stop()
 
     # Stop the TTF DAM store and GCV store for gas entries
     if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_GAS:
@@ -149,6 +157,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Clear the Repairs issue
     async_delete_issue(hass, DOMAIN, f"entity_renamed_{entry.entry_id}")
 
-    if entry.data.get(CONF_DOMAIN_TYPE) not in (DOMAIN_TYPE_ELECTRICITY, DOMAIN_TYPE_GAS):
+    if entry.data.get(CONF_DOMAIN_TYPE) not in (DOMAIN_TYPE_ELECTRICITY, DOMAIN_TYPE_GAS, DOMAIN_TYPE_ELECTRICITY_SUPPLIER):
         return True
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)

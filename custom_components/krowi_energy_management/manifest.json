@@ -6,5 +6,6 @@
   "documentation": "https://github.com/TheKrowi/ha-krowi-energy-management",
   "issue_tracker": "https://github.com/TheKrowi/ha-krowi-energy-management/issues",
   "codeowners": ["@TheKrowi"],
-  "iot_class": "calculated"
+  "iot_class": "calculated",
+  "requirements": ["pyxlsb>=1.0.10"]
 }
