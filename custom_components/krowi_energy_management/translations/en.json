@@ -7,7 +7,8 @@
         "menu_options": {
           "electricity": "Electricity",
           "gas": "Gas",
-          "settings": "Settings"
+          "settings": "Settings",
+          "electricity_supplier": "Electricity Supplier"
         }
       },
       "electricity": {
@@ -40,6 +41,17 @@
         },
         "data_description": {
           "language": "Language used for entity display names."
+        }
+      },
+      "electricity_supplier": {
+        "title": "Electricity Supplier",
+        "data": {
+          "supplier_slug": "Supplier",
+          "supplier_label": "Custom label (optional)"
+        },
+        "data_description": {
+          "supplier_slug": "Select your electricity supplier.",
+          "supplier_label": "Override the display name for this supplier entry. Leave empty to use the default name."
         }
       }
     },

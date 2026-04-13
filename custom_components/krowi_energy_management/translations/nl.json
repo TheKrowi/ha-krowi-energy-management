@@ -7,7 +7,8 @@
         "menu_options": {
           "electricity": "Elektriciteit",
           "gas": "Gas",
-          "settings": "Instellingen"
+          "settings": "Instellingen",
+          "electricity_supplier": "Elektriciteitsleverancier"
         }
       },
       "settings": {
@@ -17,6 +18,17 @@
         },
         "data_description": {
           "language": "Taal voor de weergavenamen van entiteiten."
+        }
+      },
+      "electricity_supplier": {
+        "title": "Elektriciteitsleverancier",
+        "data": {
+          "supplier_slug": "Leverancier",
+          "supplier_label": "Aangepast label (optioneel)"
+        },
+        "data_description": {
+          "supplier_slug": "Selecteer uw elektriciteitsleverancier.",
+          "supplier_label": "Overschrijf de weergavenaam voor dit leveranciersitem. Laat leeg voor de standaardnaam."
         }
       }
     },
