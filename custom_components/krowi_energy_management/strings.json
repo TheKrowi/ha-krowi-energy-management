@@ -74,6 +74,15 @@
           "export_template": "Jinja2 template that evaluates to the current export price."
         }
       },
+      "electricity_supplier_options": {
+        "title": "Supplier Options",
+        "data": {
+          "supplier_label": "Display name"
+        },
+        "data_description": {
+          "supplier_label": "Custom display name for this supplier entry."
+        }
+      },
       "gas_options": {
         "title": "Gas Options",
         "data": {

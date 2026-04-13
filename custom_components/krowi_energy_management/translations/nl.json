@@ -38,6 +38,15 @@
   },
   "options": {
     "step": {
+      "electricity_supplier_options": {
+        "title": "Leveranciersopties",
+        "data": {
+          "supplier_label": "Weergavenaam"
+        },
+        "data_description": {
+          "supplier_label": "Aangepaste weergavenaam voor deze leveranciersinvoer."
+        }
+      },
       "gas_options": {
         "title": "Gas-opties",
         "data": {

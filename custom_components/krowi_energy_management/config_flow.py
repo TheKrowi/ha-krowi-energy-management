@@ -277,6 +277,8 @@ class KrowiEnergyManagementOptionsFlow(config_entries.OptionsFlow):
             return await self.async_step_electricity_options(user_input)
         if domain_type == DOMAIN_TYPE_SETTINGS:
             return await self.async_step_settings_options(user_input)
+        if domain_type == DOMAIN_TYPE_ELECTRICITY_SUPPLIER:
+            return await self.async_step_electricity_supplier_options(user_input)
         return await self.async_step_gas_options(user_input)
 
     async def async_step_settings_options(self, user_input=None):
@@ -303,6 +305,29 @@ class KrowiEnergyManagementOptionsFlow(config_entries.OptionsFlow):
                     self.hass.config_entries.async_reload(entry.entry_id)
                 )
         return result
+
+    async def async_step_electricity_supplier_options(self, user_input=None):
+        """Electricity supplier options — change display label."""
+        current = {**self._entry.data, **self._entry.options}
+        slug = current.get(CONF_SUPPLIER_SLUG, "")
+        catalog_entry = ELECTRICITY_SUPPLIER_CATALOG.get(slug, {})
+        default_label = catalog_entry.get("name", slug)
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id="electricity_supplier_options",
+                data_schema=vol.Schema(
+                    {
+                        vol.Optional(
+                            CONF_SUPPLIER_LABEL,
+                            default=current.get(CONF_SUPPLIER_LABEL, default_label),
+                        ): str,
+                    }
+                ),
+            )
+
+        label = user_input.get(CONF_SUPPLIER_LABEL, "").strip() or default_label
+        return self.async_create_entry(title="", data={CONF_SUPPLIER_LABEL: label})
 
     async def async_step_electricity_options(self, user_input=None):
         """Electricity options — pre-populated with current values."""
