@@ -10,6 +10,7 @@ from homeassistant.helpers import entity_registry as er, selector # type: ignore
 
 from .const import (
     CONF_DOMAIN_TYPE,
+    CONF_ELECTRICITY_DSO,
     CONF_ELECTRICITY_EXPORT_T1_METER,
     CONF_ELECTRICITY_EXPORT_T1_PRICE,
     CONF_ELECTRICITY_EXPORT_T2_METER,
@@ -25,6 +26,7 @@ from .const import (
     CONF_LOW_PRICE_CUTOFF,
     CONF_SUPPLIER_LABEL,
     CONF_SUPPLIER_SLUG,
+    DEFAULT_ELECTRICITY_DSO,
     DEFAULT_ELECTRICITY_EXPORT_T1_METER,
     DEFAULT_ELECTRICITY_EXPORT_T1_PRICE,
     DEFAULT_ELECTRICITY_EXPORT_T2_METER,
@@ -42,6 +44,7 @@ from .const import (
     DOMAIN_TYPE_ELECTRICITY_SUPPLIER,
     DOMAIN_TYPE_GAS,
     DOMAIN_TYPE_SETTINGS,
+    ELECTRICITY_DSO_OPTIONS,
     ELECTRICITY_SUPPLIER_CATALOG,
     GOS_ZONE_OPTIONS,
     LANG_EN,
@@ -68,6 +71,15 @@ def _electricity_options_schema(defaults: dict | None = None) -> vol.Schema:
     d = defaults or {}
     return vol.Schema(
         {
+            vol.Required(
+                CONF_ELECTRICITY_DSO,
+                default=d.get(CONF_ELECTRICITY_DSO, DEFAULT_ELECTRICITY_DSO),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=ELECTRICITY_DSO_OPTIONS,
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
             vol.Required(
                 CONF_EXPORT_TEMPLATE,
                 default=d.get(

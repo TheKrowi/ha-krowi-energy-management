@@ -11,10 +11,12 @@ from homeassistant.helpers.issue_registry import IssueSeverity, async_create_iss
 
 from .const import (
     CONF_DOMAIN_TYPE,
+    CONF_ELECTRICITY_DSO,
     CONF_FX_RATE_ENTITY,
     CONF_GAS_METER_ENTITY,
     CONF_GOS_ZONE,
     CONF_LOW_PRICE_CUTOFF,
+    DEFAULT_ELECTRICITY_DSO,
     DEFAULT_GAS_METER_ENTITY,
     DEFAULT_GOS_ZONE,
     DEFAULT_LOW_PRICE_CUTOFF,
@@ -99,8 +101,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_ELECTRICITY:
         effective = {**entry.data, **entry.options}
         low_price_cutoff = effective.get(CONF_LOW_PRICE_CUTOFF, DEFAULT_LOW_PRICE_CUTOFF)
+        dso = effective.get(CONF_ELECTRICITY_DSO, DEFAULT_ELECTRICITY_DSO)
         rlp_store = SynergridRLPStore()
-        await rlp_store.async_start(hass)
+        await rlp_store.async_start(hass, dso_name=dso)
         hass.data.setdefault(DOMAIN, {})["rlp_store"] = rlp_store
         store = NordpoolBeStore()
         hass.data.setdefault(DOMAIN, {})["nordpool_store"] = store

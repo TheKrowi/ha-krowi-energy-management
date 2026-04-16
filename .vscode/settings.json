@@ -8,6 +8,12 @@
         "git add": true,
         "git commit": true,
         "mv": true,
-        "Move-Item": true
+        "Move-Item": true,
+        "openspec": true,
+        "npx openspec": true,
+        "/^python -c \"\nimport urllib\\.request, io, pyxlsb\nfrom datetime import date\n\ndef _parse_xlsb\\(data, year, dso_name\\):\n    result = \\{\\}\n    with pyxlsb\\.open_workbook\\(io\\.BytesIO\\(data\\)\\) as wb:\n        with wb\\.get_sheet\\('RLP96UbyDGO'\\) as sheet:\n            rows = list\\(sheet\\.rows\\(\\)\\)\n    if len\\(rows\\) < 4:\n        print\\('Too few rows'\\); return result\n    dgo_header = rows\\[1\\]\n    dso_col = None\n    for col_idx, cell in enumerate\\(dgo_header\\):\n        if cell and cell\\.v == dso_name:\n            dso_col = col_idx\n            break\n    if dso_col is None:\n        print\\(f'DSO not found: \\{dso_name\\}'\\); return result\n    print\\(f'Found \\{dso_name!r\\} at col \\{dso_col\\}'\\)\n    for row in rows\\[3:\\]:\n        vals = \\[c\\.v if c else None for c in row\\]\n        if len\\(vals\\) <= dso_col or vals\\[1\\] is None:\n            continue\n        key = f'\\{int\\(vals\\[1\\]\\)\\}-\\{int\\(vals\\[2\\]\\):02d\\}-\\{int\\(vals\\[3\\]\\):02d\\}'\n        w = vals\\[dso_col\\]\n        if w is not None:\n            try: result\\.setdefault\\(key, \\[\\]\\)\\.append\\(float\\(w\\)\\)\n            except: pass\n    return result\n\nurl = 'https://www\\.synergrid\\.be/images/downloads/SLP-RLP-SPP/2026/RLP0N%202026%20Electricity%20all%20DSOs\\.xlsb'\nprint\\('Downloading\\.\\.\\.', flush=True\\)\ndata = urllib\\.request\\.urlopen\\(url\\)\\.read\\(\\)\nprint\\(f'Downloaded \\{len\\(data\\):,\\} bytes', flush=True\\)\n\nr1 = _parse_xlsb\\(data, 2026, 'Fluvius Zenne-Dijle'\\)\nprint\\(f'Parsed \\{len\\(r1\\)\\} days for Fluvius Zenne-Dijle'\\)\nsample = '2026-01-01'\nprint\\(f'\\{sample\\}: \\{len\\(r1\\[sample\\]\\)\\} slots, first=\\{r1\\[sample\\]\\[0\\]:\\.6e\\}'\\)\ntoday = date\\.today\\(\\)\\.isoformat\\(\\)\nprint\\(f'Today \\(\\{today\\}\\) present: \\{today in r1\\}'\\)\n\nr2 = _parse_xlsb\\(data, 2026, 'SIBELGA-IE'\\)\nprint\\(f'SIBELGA-IE \\{sample\\} first=\\{r2\\[sample\\]\\[0\\]:\\.6e\\}  \\(different: \\{r1\\[sample\\]\\[0\\] != r2\\[sample\\]\\[0\\]\\}\\)'\\)\n\nr3 = _parse_xlsb\\(data, 2026, 'nonexistent-dso'\\)\nprint\\(f'Unknown DSO returns empty: \\{r3 == \\{\\}\\}'\\)\n\"\n$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     }
 }

@@ -90,6 +90,37 @@ DEFAULT_ELECTRICITY_IMPORT_T2_PRICE = "sensor.electricity_current_price_import_e
 DEFAULT_ELECTRICITY_EXPORT_T1_PRICE = "sensor.electricity_current_price_export_eur"
 DEFAULT_ELECTRICITY_EXPORT_T2_PRICE = "sensor.electricity_current_price_export_eur"
 
+# Electricity DSO config keys and defaults
+CONF_ELECTRICITY_DSO = "electricity_dso"
+DEFAULT_ELECTRICITY_DSO = "Fluvius Zenne-Dijle"
+ELECTRICITY_DSO_OPTIONS: list[str] = [
+    "Fluvius Antwerpen",
+    "Fluvius Limburg",
+    "Fluvius West",
+    "Fluvius Zenne-Dijle",
+    "Fluvius Halle-Vilvoorde",
+    "Fluvius Imewo",
+    "Fluvius Midden-Vlaanderen",
+    "Fluvius Kempen",
+    "ORES (Brabant Wallon)",
+    "ORES (Est)",
+    "ORES (Hainaut Élec2)",
+    "ORES (Hainaut Élec1)",
+    "ORES (Luxembourg)",
+    "ORES (Mouscron)",
+    "ORES (Namur)",
+    "ORES (Verviers)",
+    "RESA",
+    "SIBELGA-IE",
+    "SIBELGA-SE",
+    "Régie de Wavre",
+    "AIEG",
+    "AIESH",
+    "Régie de Wavre",
+    "AIEG",
+    "AIESH",
+]
+
 # GCV / gas meter config keys and defaults
 CONF_GOS_ZONE = "gos_zone"
 DEFAULT_GOS_ZONE = "GOS FLUVIUS - LEUVEN"

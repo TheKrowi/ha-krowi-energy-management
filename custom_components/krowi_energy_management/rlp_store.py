@@ -13,75 +13,56 @@ _LOGGER = logging.getLogger(__name__)
 
 _RLP_URL_PATTERN = (
     "https://www.synergrid.be/images/downloads/SLP-RLP-SPP/"
-    "{year}/RLP0N%20{year}%20Electricity.xlsb"
+    "{year}/RLP0N%20{year}%20Electricity%20all%20DSOs.xlsb"
 )
 _STORAGE_KEY_PATTERN = "krowi_energy_management_rlp_{year}"
 _STORAGE_VERSION = 1
 
 
-def _parse_xlsb(data: bytes, year: int) -> dict[str, list[float]]:
-    """Parse the Synergrid RLP0N .xlsb file in a worker thread.
+def _parse_xlsb(data: bytes, year: int, dso_name: str) -> dict[str, list[float]]:
+    """Parse the Synergrid RLP0N all-DSOs .xlsb file in a worker thread.
 
     Returns a dict mapping ISO date strings (YYYY-MM-DD) to a list of
-    96 (±4 for DST) weight floats.
+    96 (±4 for DST) weight floats for the specified DSO.
     """
     import pyxlsb  # type: ignore  # noqa: PLC0415
 
     result: dict[str, list[float]] = {}
     with pyxlsb.open_workbook(io.BytesIO(data)) as wb:
-        # The profile sheet is the first non-hidden sheet; use the first sheet
-        sheet_name = wb.sheets[0]
-        with wb.get_sheet(sheet_name) as sheet:
+        with wb.get_sheet("RLP96UbyDGO") as sheet:
             rows = list(sheet.rows())
 
-    # Locate header row: find column index for each date and the weight rows.
-    # The Synergrid format has:
-    #   Row 1 (0-indexed row 0): date serial numbers in columns 1..N
-    #   Row 2+: QH weights per date
-    # Date serials are Excel/ODS date serials; pyxlsb returns them as floats.
-    # We skip the first column (row label) and read subsequent columns as dates.
-
-    if len(rows) < 2:
+    # Row 1 (index 1): DGO names starting at col 7
+    if len(rows) < 4:
         _LOGGER.warning("SynergridRLPStore: unexpected file format — too few rows")
         return result
 
-    header = rows[0]
-    # Build list of (col_index, date) from header
-    date_cols: list[tuple[int, date]] = []
-    for col_idx, cell in enumerate(header):
-        if col_idx == 0:
-            continue
-        val = cell.v if cell is not None else None
-        if val is None:
-            continue
-        try:
-            # Excel date serial: days since 1899-12-30
-            d = date(1899, 12, 30) + __import__("datetime").timedelta(days=int(val))
-            if d.year == year:
-                date_cols.append((col_idx, d))
-        except (ValueError, OverflowError):
-            pass
+    dgo_header = rows[1]
+    dso_col = None
+    for col_idx, cell in enumerate(dgo_header):
+        if cell and cell.v == dso_name:
+            dso_col = col_idx
+            break
 
-    if not date_cols:
-        _LOGGER.warning("SynergridRLPStore: no date columns found for year %d", year)
+    if dso_col is None:
+        _LOGGER.warning(
+            "SynergridRLPStore: DSO '%s' not found in RLP96UbyDGO header row",
+            dso_name,
+        )
         return result
 
-    # Collect weights per date column
-    col_weights: dict[int, list[float]] = {ci: [] for ci, _ in date_cols}
-    for row in rows[1:]:
-        for col_idx, _ in date_cols:
-            if col_idx < len(row) and row[col_idx] is not None:
-                val = row[col_idx].v
-                if val is not None:
-                    try:
-                        col_weights[col_idx].append(float(val))
-                    except (ValueError, TypeError):
-                        pass
-
-    for col_idx, d in date_cols:
-        weights = col_weights[col_idx]
-        if weights:
-            result[d.isoformat()] = weights
+    # Row 3+ (index 3+): data rows
+    for row in rows[3:]:
+        vals = [c.v if c else None for c in row]
+        if len(vals) <= dso_col or vals[1] is None:
+            continue
+        key = f"{int(vals[1])}-{int(vals[2]):02d}-{int(vals[3]):02d}"
+        w = vals[dso_col]
+        if w is not None:
+            try:
+                result.setdefault(key, []).append(float(w))
+            except (ValueError, TypeError):
+                pass
 
     return result
 
@@ -95,6 +76,7 @@ class SynergridRLPStore:
         self._storage: Store | None = None
         self._available: bool = False
         self._rlp_available_dates: set[str] = set()  # dates with real RLP weights
+        self._dso_name: str = ""
 
     @property
     def available(self) -> bool:
@@ -105,7 +87,7 @@ class SynergridRLPStore:
     # Lifecycle
     # -------------------------------------------------------------------------
 
-    async def async_start(self, hass: HomeAssistant) -> None:
+    async def async_start(self, hass: HomeAssistant, dso_name: str) -> None:
         """Start the store: load from HA Storage or download if needed."""
         self._hass = hass
         year = date.today().year
@@ -113,11 +95,12 @@ class SynergridRLPStore:
         self._storage = Store(hass, _STORAGE_VERSION, key)
 
         # Attempt to load from storage
-        loaded = await self._async_load(year)
+        loaded = await self._async_load(year, dso_name)
         today_iso = date.today().isoformat()
 
         if loaded and today_iso in self._weights:
             self._available = True
+            self._dso_name = dso_name
             self._rlp_available_dates = set(self._weights.keys())
             _LOGGER.debug(
                 "SynergridRLPStore: loaded %d days from storage for year %d",
@@ -132,7 +115,7 @@ class SynergridRLPStore:
             today_iso,
             year,
         )
-        await self._async_download_and_parse(year)
+        await self._async_download_and_parse(year, dso_name)
 
     async def async_stop(self) -> None:
         """Stop the store — no-op (no subscriptions to clean up)."""
@@ -141,7 +124,7 @@ class SynergridRLPStore:
     # Load / Download / Persist
     # -------------------------------------------------------------------------
 
-    async def _async_load(self, year: int) -> bool:
+    async def _async_load(self, year: int, dso_name: str) -> bool:
         """Load weights from HA Storage. Returns True if any data was loaded."""
         try:
             raw = await self._storage.async_load()
@@ -152,8 +135,22 @@ class SynergridRLPStore:
         if not isinstance(raw, dict):
             return False
 
+        # New format: {"dso": "...", "weights": {...}}
+        # Old (flat) format: {"2026-01-01": [...], ...} — discard if DSO key missing
+        if raw.get("dso") != dso_name:
+            _LOGGER.debug(
+                "SynergridRLPStore: cached DSO '%s' != configured '%s' — discarding cache",
+                raw.get("dso"),
+                dso_name,
+            )
+            return False
+
+        raw_weights = raw.get("weights")
+        if not isinstance(raw_weights, dict):
+            return False
+
         weights: dict[str, list[float]] = {}
-        for key, val in raw.items():
+        for key, val in raw_weights.items():
             if isinstance(val, list) and val:
                 try:
                     weights[key] = [float(w) for w in val]
@@ -166,7 +163,7 @@ class SynergridRLPStore:
         self._weights = weights
         return True
 
-    async def _async_download_and_parse(self, year: int) -> None:
+    async def _async_download_and_parse(self, year: int, dso_name: str) -> None:
         """Download and parse the .xlsb file for the given year."""
         url = _RLP_URL_PATTERN.format(year=year)
         session = async_get_clientsession(self._hass)
@@ -185,7 +182,7 @@ class SynergridRLPStore:
 
         try:
             weights = await self._hass.async_add_executor_job(
-                _parse_xlsb, data, year
+                _parse_xlsb, data, year, dso_name
             )
         except Exception as exc:
             _LOGGER.warning(
@@ -207,6 +204,7 @@ class SynergridRLPStore:
         self._weights = weights
         self._available = True
         self._rlp_available_dates = set(weights.keys())
+        self._dso_name = dso_name
         _LOGGER.debug(
             "SynergridRLPStore: downloaded and parsed %d days for year %d",
             len(weights),
@@ -219,7 +217,9 @@ class SynergridRLPStore:
     async def _async_persist(self) -> None:
         """Save weights to HA Storage."""
         try:
-            await self._storage.async_save(self._weights)
+            await self._storage.async_save(
+                {"dso": self._dso_name, "weights": self._weights}
+            )
         except Exception as exc:
             _LOGGER.warning("SynergridRLPStore: failed to save to storage: %s", exc)
 
