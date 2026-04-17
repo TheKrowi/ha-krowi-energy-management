@@ -27,6 +27,7 @@ from .const import (
 )
 from .nordpool_store import NordpoolBeStore
 from .rlp_store import SynergridRLPStore
+from .spp_store import SynergridSPPStore
 from .ttf_dam_store import TtfDamStore
 from .gcv_store import GcvStore
 
@@ -105,9 +106,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         rlp_store = SynergridRLPStore()
         await rlp_store.async_start(hass, dso_name=dso)
         hass.data.setdefault(DOMAIN, {})["rlp_store"] = rlp_store
+        spp_store = SynergridSPPStore()
+        await spp_store.async_start(hass)
+        hass.data.setdefault(DOMAIN, {})["spp_store"] = spp_store
         store = NordpoolBeStore()
         hass.data.setdefault(DOMAIN, {})["nordpool_store"] = store
-        await store.async_start(hass, low_price_cutoff, rlp_store)
+        await store.async_start(hass, low_price_cutoff, rlp_store, spp_store)
 
     # For gas entries, start the TTF DAM store and GCV store before platform setup
     if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_GAS:
@@ -142,6 +146,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         rlp_store = hass.data.get(DOMAIN, {}).pop("rlp_store", None)
         if rlp_store:
             await rlp_store.async_stop()
+        spp_store = hass.data.get(DOMAIN, {}).pop("spp_store", None)
+        if spp_store:
+            await spp_store.async_stop()
 
     # Stop the TTF DAM store and GCV store for gas entries
     if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_GAS:

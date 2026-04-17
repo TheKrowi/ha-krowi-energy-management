@@ -19,6 +19,7 @@ from .const import SIGNAL_NORDPOOL_UPDATE
 
 if TYPE_CHECKING:
     from .rlp_store import SynergridRLPStore
+    from .spp_store import SynergridSPPStore
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,22 +54,27 @@ class NordpoolBeStore:
         self._current_price: float | None = None
         self._daily_avg_buffer: dict[date, float] = {}
         self._daily_rlp_buffer: dict[date, tuple[float, float]] = {}
+        self._daily_spp_buffer: dict[date, tuple[float, float]] = {}
         self._storage: Store | None = None
         self._rlp_storage: Store | None = None
+        self._spp_storage: Store | None = None
         self._rlp_store: SynergridRLPStore | None = None
+        self._spp_store: SynergridSPPStore | None = None
         self._unsubs: list = []
 
     # -------------------------------------------------------------------------
     # Lifecycle
     # -------------------------------------------------------------------------
 
-    async def async_start(self, hass: HomeAssistant, low_price_cutoff: float, rlp_store: SynergridRLPStore | None = None) -> None:
+    async def async_start(self, hass: HomeAssistant, low_price_cutoff: float, rlp_store: SynergridRLPStore | None = None, spp_store: SynergridSPPStore | None = None) -> None:
         """Start the store: subscribe to time events and run initial fetches."""
         self._hass = hass
         self._low_price_cutoff = low_price_cutoff
         self._rlp_store = rlp_store
+        self._spp_store = spp_store
         self._storage = Store(hass, _STORAGE_VERSION, _STORAGE_KEY)
         self._rlp_storage = Store(hass, _STORAGE_VERSION, "krowi_energy_management_nordpool_daily_rlp_avg")
+        self._spp_storage = Store(hass, _STORAGE_VERSION, "krowi_energy_management_nordpool_daily_spp_avg")
 
         # Midnight: snapshot yesterday, refresh today, clear tomorrow
         self._unsubs.append(
@@ -86,6 +92,7 @@ class NordpoolBeStore:
         # Load persisted buffers
         await self._async_load_buffer()
         await self._async_load_rlp_buffer()
+        await self._async_load_spp_buffer()
 
         # Initial fetches
         await self.async_fetch_today()
@@ -228,8 +235,36 @@ class NordpoolBeStore:
         payload = {d.isoformat(): list(v) for d, v in self._daily_rlp_buffer.items()}
         self._hass.async_create_task(self._rlp_storage.async_save(payload))
 
+    async def _async_load_spp_buffer(self) -> None:
+        """Load the SPP daily buffer from HA Storage."""
+        try:
+            raw = await self._spp_storage.async_load()
+        except Exception as exc:
+            _LOGGER.warning("NordpoolBeStore: failed to load SPP buffer from storage: %s", exc)
+            raw = None
+
+        if not isinstance(raw, dict):
+            self._daily_spp_buffer = {}
+            return
+
+        buf: dict[date, tuple[float, float]] = {}
+        for key, val in raw.items():
+            try:
+                d = date.fromisoformat(key)
+                if isinstance(val, (list, tuple)) and len(val) == 2:
+                    buf[d] = (float(val[0]), float(val[1]))
+            except (ValueError, TypeError):
+                pass
+        self._daily_spp_buffer = buf
+        _LOGGER.debug("NordpoolBeStore: loaded %d SPP buffer entries from storage", len(buf))
+
+    def _save_spp_buffer(self) -> None:
+        """Persist the SPP buffer to HA Storage (fire-and-forget)."""
+        payload = {d.isoformat(): list(v) for d, v in self._daily_spp_buffer.items()}
+        self._hass.async_create_task(self._spp_storage.async_save(payload))
+
     def _trim_buffer(self) -> None:
-        """Remove entries older than one calendar month from both buffers."""
+        """Remove entries older than one calendar month from all buffers."""
         cutoff = date.today() - relativedelta(months=1)
         to_remove = [d for d in self._daily_avg_buffer if d < cutoff]
         for d in to_remove:
@@ -237,9 +272,12 @@ class NordpoolBeStore:
         to_remove_rlp = [d for d in self._daily_rlp_buffer if d < cutoff]
         for d in to_remove_rlp:
             del self._daily_rlp_buffer[d]
+        to_remove_spp = [d for d in self._daily_spp_buffer if d < cutoff]
+        for d in to_remove_spp:
+            del self._daily_spp_buffer[d]
 
     def _snapshot_today(self) -> None:
-        """Snapshot today's average into both buffers as yesterday's entry (called at midnight)."""
+        """Snapshot today's average into all buffers as yesterday's entry (called at midnight)."""
         avg = self.average
         if avg is None:
             return
@@ -249,12 +287,16 @@ class NordpoolBeStore:
         # RLP-weighted buffer
         rlp_entry = self._compute_rlp_entry(yesterday, self._data_today)
         self._daily_rlp_buffer[yesterday] = rlp_entry
+        # SPP-weighted buffer
+        spp_entry = self._compute_spp_entry(yesterday, self._data_today)
+        self._daily_spp_buffer[yesterday] = spp_entry
         self._trim_buffer()
         self._save_buffer()
         self._save_rlp_buffer()
+        self._save_spp_buffer()
         _LOGGER.debug(
-            "NordpoolBeStore: snapshotted daily average %.5f for %s (rlp ws=%.5f wt=%.5f)",
-            avg, yesterday, rlp_entry[0], rlp_entry[1],
+            "NordpoolBeStore: snapshotted daily average %.5f for %s (rlp ws=%.5f wt=%.5f) (spp ws=%.5f wt=%.5f)",
+            avg, yesterday, rlp_entry[0], rlp_entry[1], spp_entry[0], spp_entry[1],
         )
 
     def _compute_rlp_entry(self, d: date, slots: list[dict]) -> tuple[float, float]:
@@ -267,6 +309,20 @@ class NordpoolBeStore:
             wt = sum(weights)
         else:
             # Unweighted fallback
+            ws = sum(slot["value"] for slot in slots)
+            wt = float(len(slots))
+        return (ws, wt)
+
+    def _compute_spp_entry(self, d: date, slots: list[dict]) -> tuple[float, float]:
+        """Compute (weighted_sum, weight_sum) for a day's slots using SPP weights."""
+        if not slots:
+            return (0.0, 0.0)
+        weights = self._spp_store.get_weights(d) if self._spp_store else None
+        if weights and len(weights) == len(slots):
+            ws = sum(slot["value"] * w for slot, w in zip(slots, weights))
+            wt = sum(weights)
+        else:
+            # Unweighted fallback (SPP unavailable)
             ws = sum(slot["value"] for slot in slots)
             wt = float(len(slots))
         return (ws, wt)
@@ -304,6 +360,8 @@ class NordpoolBeStore:
             self._daily_avg_buffer[missing_date] = daily_avg
             if missing_date not in self._daily_rlp_buffer:
                 self._daily_rlp_buffer[missing_date] = self._compute_rlp_entry(missing_date, slots)
+            if missing_date not in self._daily_spp_buffer:
+                self._daily_spp_buffer[missing_date] = self._compute_spp_entry(missing_date, slots)
             changed = True
             _LOGGER.debug("NordpoolBeStore: backfilled %s = %.5f", date_str, daily_avg)
 
@@ -311,6 +369,7 @@ class NordpoolBeStore:
             self._trim_buffer()
             self._save_buffer()
             self._save_rlp_buffer()
+            self._save_spp_buffer()
 
     # -------------------------------------------------------------------------
     # Time-change callbacks
@@ -396,6 +455,20 @@ class NordpoolBeStore:
         # Today's live RLP contribution
         today_entry = self._compute_rlp_entry(date.today(), self._data_today)
         all_entries = list(self._daily_rlp_buffer.values()) + [today_entry]
+        total_wt = sum(wt for _, wt in all_entries)
+        if total_wt == 0:
+            return None
+        total_ws = sum(ws for ws, _ in all_entries)
+        return round(total_ws / total_wt, 5)
+
+    @property
+    def monthly_average_spp(self) -> float | None:
+        """Rolling calendar-month SPP-weighted average in c€/kWh, rounded to 5dp."""
+        if self.average is None:
+            return None
+        # Today's live SPP contribution
+        today_entry = self._compute_spp_entry(date.today(), self._data_today)
+        all_entries = list(self._daily_spp_buffer.values()) + [today_entry]
         total_wt = sum(wt for _, wt in all_entries)
         if total_wt == 0:
             return None

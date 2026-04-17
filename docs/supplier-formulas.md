@@ -12,26 +12,15 @@ The sensors are **unavailable** when the RLP-weighted average is not yet populat
 
 ## Mega (tariefkaart 12/2025)
 
+See [docs/suppliers/mega.md](suppliers/mega.md) for full details.
+
 ### Import price (`electricity_mega_import_price`)
 
 $$
 P_{\text{import}} = \bigl(\text{EPEX}_{\text{RLP}} \times 1.061 + \text{surcharge}\bigr) \times \left(1 + \frac{\text{VAT}}{100}\right)
 $$
 
-| Variable | Source | Notes |
-|---|---|---|
-| $\text{EPEX}_{\text{RLP}}$ | `electricity_spot_average_price_rlp` | c€/kWh, RLP-weighted monthly average |
-| $1.061$ | Mega multiplier | Covers settlement margin, imbalance, etc. |
-| $\text{surcharge}$ | `electricity_tariff_total_surcharge` sensor | c€/kWh, sum of all non-VAT tariff components |
-| $\text{VAT}$ | `electricity_vat` number entity | % (e.g. 6 or 21) |
-
-**Unit:** c€/kWh, VAT inclusive.
-
-The EUR/kWh variant (`electricity_mega_import_price_eur`) is simply:
-
-$$
-P_{\text{import, EUR}} = P_{\text{import}} \div 100
-$$
+**Unit:** c€/kWh, VAT inclusive. EUR/kWh variant: divide by 100.
 
 ---
 

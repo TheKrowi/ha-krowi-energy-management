@@ -855,16 +855,16 @@ class ElectricitySupplierExportPriceSensor(KrowiSensor):
     @callback
     def _update(self) -> None:
         store = self._get_store()
-        if store is None or store.monthly_average_rlp is None:
+        if store is None or store.monthly_average_spp is None:
             self._attr_native_value = None
             self._attr_available = False
             self.async_write_ha_state()
             return
 
-        epex_rlp = store.monthly_average_rlp
+        epex_spp = store.monthly_average_spp
         multiplier = self._params["epex_multiplier"]
         offset = self._params["epex_offset_cEur_kwh"]
-        result = epex_rlp * multiplier + offset
+        result = epex_spp * multiplier + offset
         self._attr_native_value = round(result, 5)
         self._attr_available = True
         self.async_write_ha_state()
