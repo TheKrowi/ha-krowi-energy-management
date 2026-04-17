@@ -11,7 +11,7 @@ from dateutil.relativedelta import relativedelta # type: ignore
 from homeassistant.core import HomeAssistant, callback # type: ignore
 from homeassistant.helpers.aiohttp_client import async_get_clientsession # type: ignore
 from homeassistant.helpers.dispatcher import async_dispatcher_send # type: ignore
-from homeassistant.helpers.event import async_track_time_change # type: ignore
+from homeassistant.helpers.event import async_call_later, async_track_time_change # type: ignore
 from homeassistant.helpers.storage import Store # type: ignore
 from homeassistant.util import dt as dt_utils # type: ignore
 
@@ -53,14 +53,15 @@ class NordpoolBeStore:
         self._tomorrow_valid: bool = False
         self._current_price: float | None = None
         self._daily_avg_buffer: dict[date, float] = {}
-        self._daily_rlp_buffer: dict[date, tuple[float, float]] = {}
-        self._daily_spp_buffer: dict[date, tuple[float, float]] = {}
+        self._daily_rlp_buffer: dict[date, float] = {}
+        self._daily_spp_buffer: dict[date, float] = {}
         self._storage: Store | None = None
         self._rlp_storage: Store | None = None
         self._spp_storage: Store | None = None
         self._rlp_store: SynergridRLPStore | None = None
         self._spp_store: SynergridSPPStore | None = None
         self._unsubs: list = []
+        self._backfill_retry_unsub: object | None = None
 
     # -------------------------------------------------------------------------
     # Lifecycle
@@ -94,6 +95,11 @@ class NordpoolBeStore:
         await self._async_load_rlp_buffer()
         await self._async_load_spp_buffer()
 
+        # Trim stale entries from storage immediately (trim normally runs at midnight,
+        # so after a restart old entries outside the calendar-month window would persist
+        # until the next midnight tick and inflate the weighted averages).
+        self._trim_buffer()
+
         # Initial fetches
         await self.async_fetch_today()
         if dt_utils.now().hour >= 13:
@@ -111,6 +117,9 @@ class NordpoolBeStore:
         for unsub in self._unsubs:
             unsub()
         self._unsubs.clear()
+        if self._backfill_retry_unsub is not None:
+            self._backfill_retry_unsub()
+            self._backfill_retry_unsub = None
 
     # -------------------------------------------------------------------------
     # Fetch methods
@@ -211,15 +220,10 @@ class NordpoolBeStore:
             self._daily_rlp_buffer = {}
             return
 
-        buf: dict[date, tuple[float, float]] = {}
+        buf: dict[date, float] = {}
         for key, val in raw.items():
             try:
-                d = date.fromisoformat(key)
-                if isinstance(val, (list, tuple)) and len(val) == 2:
-                    buf[d] = (float(val[0]), float(val[1]))
-                else:
-                    # Migrate old float format: treat as unweighted (value × 96, 96)
-                    buf[d] = (float(val) * 96.0, 96.0)
+                buf[date.fromisoformat(key)] = float(val)
             except (ValueError, TypeError):
                 pass
         self._daily_rlp_buffer = buf
@@ -232,7 +236,7 @@ class NordpoolBeStore:
 
     def _save_rlp_buffer(self) -> None:
         """Persist the RLP buffer to HA Storage (fire-and-forget)."""
-        payload = {d.isoformat(): list(v) for d, v in self._daily_rlp_buffer.items()}
+        payload = {d.isoformat(): v for d, v in self._daily_rlp_buffer.items()}
         self._hass.async_create_task(self._rlp_storage.async_save(payload))
 
     async def _async_load_spp_buffer(self) -> None:
@@ -247,12 +251,10 @@ class NordpoolBeStore:
             self._daily_spp_buffer = {}
             return
 
-        buf: dict[date, tuple[float, float]] = {}
+        buf: dict[date, float] = {}
         for key, val in raw.items():
             try:
-                d = date.fromisoformat(key)
-                if isinstance(val, (list, tuple)) and len(val) == 2:
-                    buf[d] = (float(val[0]), float(val[1]))
+                buf[date.fromisoformat(key)] = float(val)
             except (ValueError, TypeError):
                 pass
         self._daily_spp_buffer = buf
@@ -260,7 +262,7 @@ class NordpoolBeStore:
 
     def _save_spp_buffer(self) -> None:
         """Persist the SPP buffer to HA Storage (fire-and-forget)."""
-        payload = {d.isoformat(): list(v) for d, v in self._daily_spp_buffer.items()}
+        payload = {d.isoformat(): v for d, v in self._daily_spp_buffer.items()}
         self._hass.async_create_task(self._spp_storage.async_save(payload))
 
     def _trim_buffer(self) -> None:
@@ -285,54 +287,65 @@ class NordpoolBeStore:
         # Unweighted buffer (unchanged)
         self._daily_avg_buffer[yesterday] = avg
         # RLP-weighted buffer
-        rlp_entry = self._compute_rlp_entry(yesterday, self._data_today)
-        self._daily_rlp_buffer[yesterday] = rlp_entry
+        rlp_avg = self._compute_rlp_avg(yesterday, self._data_today)
+        self._daily_rlp_buffer[yesterday] = rlp_avg
         # SPP-weighted buffer
-        spp_entry = self._compute_spp_entry(yesterday, self._data_today)
-        self._daily_spp_buffer[yesterday] = spp_entry
+        spp_avg = self._compute_spp_avg(yesterday, self._data_today)
+        self._daily_spp_buffer[yesterday] = spp_avg
         self._trim_buffer()
         self._save_buffer()
         self._save_rlp_buffer()
         self._save_spp_buffer()
         _LOGGER.debug(
-            "NordpoolBeStore: snapshotted daily average %.5f for %s (rlp ws=%.5f wt=%.5f) (spp ws=%.5f wt=%.5f)",
-            avg, yesterday, rlp_entry[0], rlp_entry[1], spp_entry[0], spp_entry[1],
+            "NordpoolBeStore: snapshotted daily average %.5f for %s (rlp_avg=%.5f) (spp_avg=%.5f)",
+            avg, yesterday, rlp_avg, spp_avg,
         )
 
-    def _compute_rlp_entry(self, d: date, slots: list[dict]) -> tuple[float, float]:
-        """Compute (weighted_sum, weight_sum) for a day's slots using RLP weights."""
+    def _compute_rlp_avg(self, d: date, slots: list[dict]) -> float:
+        """Return the RLP-weighted daily average for the given slots in c€/kWh.
+
+        Falls back to the unweighted mean when RLP weights are unavailable.
+        """
         if not slots:
-            return (0.0, 0.0)
+            return 0.0
         weights = self._rlp_store.get_weights(d) if self._rlp_store else None
         if weights and len(weights) == len(slots):
-            ws = sum(slot["value"] * w for slot, w in zip(slots, weights))
             wt = sum(weights)
-        else:
-            # Unweighted fallback
-            ws = sum(slot["value"] for slot in slots)
-            wt = float(len(slots))
-        return (ws, wt)
+            if wt > 0:
+                return sum(slot["value"] * w for slot, w in zip(slots, weights)) / wt
+        return mean(slot["value"] for slot in slots)
 
-    def _compute_spp_entry(self, d: date, slots: list[dict]) -> tuple[float, float]:
-        """Compute (weighted_sum, weight_sum) for a day's slots using SPP weights."""
+    def _compute_spp_avg(self, d: date, slots: list[dict]) -> float:
+        """Return the SPP-weighted daily average for the given slots in c€/kWh.
+
+        Falls back to the unweighted mean when SPP weights are unavailable.
+        """
         if not slots:
-            return (0.0, 0.0)
+            return 0.0
         weights = self._spp_store.get_weights(d) if self._spp_store else None
         if weights and len(weights) == len(slots):
-            ws = sum(slot["value"] * w for slot, w in zip(slots, weights))
             wt = sum(weights)
-        else:
-            # Unweighted fallback (SPP unavailable)
-            ws = sum(slot["value"] for slot in slots)
-            wt = float(len(slots))
-        return (ws, wt)
+            if wt > 0:
+                return sum(slot["value"] * w for slot, w in zip(slots, weights)) / wt
+        return mean(slot["value"] for slot in slots)
 
     # -------------------------------------------------------------------------
     # Backfill (task 2.1)
     # -------------------------------------------------------------------------
 
     async def _async_backfill(self) -> None:
-        """Fetch any missing days in the calendar-month window and insert into buffer."""
+        """Fetch any missing days in the calendar-month window and insert into buffer.
+
+        Checks the avg, RLP, and SPP buffers independently so that a gap in
+        any one of them triggers a (re-)fetch even when the other buffers are
+        complete.  If any fetch fails (e.g. rate-limited), the missing dates
+        are retried every 60 seconds until all gaps are filled.
+        """
+        # Cancel any pending retry before starting a new pass.
+        if self._backfill_retry_unsub is not None:
+            self._backfill_retry_unsub()
+            self._backfill_retry_unsub = None
+
         today = date.today()
         cutoff = today - relativedelta(months=1)
         yesterday = today - timedelta(days=1)
@@ -344,32 +357,58 @@ class NordpoolBeStore:
             required.add(d)
             d += timedelta(days=1)
 
-        missing = sorted(required - set(self._daily_avg_buffer.keys()))
-        if not missing:
+        # Check each buffer independently — a complete avg buffer must not hide
+        # gaps in the RLP/SPP buffers.
+        all_to_fetch = sorted(
+            (required - set(self._daily_avg_buffer.keys()))
+            | (required - set(self._daily_rlp_buffer.keys()))
+            | (required - set(self._daily_spp_buffer.keys()))
+        )
+        if not all_to_fetch:
             return
 
-        _LOGGER.debug("NordpoolBeStore: backfilling %d missing day(s)", len(missing))
+        _LOGGER.debug("NordpoolBeStore: backfilling %d day(s)", len(all_to_fetch))
         changed = False
-        for missing_date in missing:
+        skipped: list[date] = []
+        for missing_date in all_to_fetch:
             date_str = missing_date.isoformat()
             slots = await self._async_fetch(date_str)
             if not slots:
-                _LOGGER.debug("NordpoolBeStore: backfill skipped %s (no data)", date_str)
+                skipped.append(missing_date)
                 continue
-            daily_avg = round(mean(slot["value"] for slot in slots), 5)
-            self._daily_avg_buffer[missing_date] = daily_avg
+            if missing_date not in self._daily_avg_buffer:
+                daily_avg = round(mean(slot["value"] for slot in slots), 5)
+                self._daily_avg_buffer[missing_date] = daily_avg
+                _LOGGER.debug("NordpoolBeStore: backfilled avg %s = %.5f", date_str, daily_avg)
             if missing_date not in self._daily_rlp_buffer:
-                self._daily_rlp_buffer[missing_date] = self._compute_rlp_entry(missing_date, slots)
+                self._daily_rlp_buffer[missing_date] = self._compute_rlp_avg(missing_date, slots)
             if missing_date not in self._daily_spp_buffer:
-                self._daily_spp_buffer[missing_date] = self._compute_spp_entry(missing_date, slots)
+                self._daily_spp_buffer[missing_date] = self._compute_spp_avg(missing_date, slots)
             changed = True
-            _LOGGER.debug("NordpoolBeStore: backfilled %s = %.5f", date_str, daily_avg)
 
         if changed:
             self._trim_buffer()
             self._save_buffer()
             self._save_rlp_buffer()
             self._save_spp_buffer()
+
+        if skipped:
+            _LOGGER.warning(
+                "NordpoolBeStore: backfill could not fetch %d day(s) (%s … %s) — "
+                "will retry in 60 s",
+                len(skipped),
+                skipped[0].isoformat(),
+                skipped[-1].isoformat(),
+            )
+            self._backfill_retry_unsub = async_call_later(
+                self._hass, 60, self._on_backfill_retry
+            )
+
+    @callback
+    def _on_backfill_retry(self, _now: datetime) -> None:
+        """Scheduled callback to retry backfill after a failed fetch."""
+        self._backfill_retry_unsub = None
+        self._hass.async_create_task(self._async_backfill())
 
     # -------------------------------------------------------------------------
     # Time-change callbacks
@@ -452,28 +491,18 @@ class NordpoolBeStore:
         """Rolling calendar-month RLP-weighted average in c€/kWh, rounded to 5dp."""
         if self.average is None:
             return None
-        # Today's live RLP contribution
-        today_entry = self._compute_rlp_entry(date.today(), self._data_today)
-        all_entries = list(self._daily_rlp_buffer.values()) + [today_entry]
-        total_wt = sum(wt for _, wt in all_entries)
-        if total_wt == 0:
-            return None
-        total_ws = sum(ws for ws, _ in all_entries)
-        return round(total_ws / total_wt, 5)
+        today_rlp = self._compute_rlp_avg(date.today(), self._data_today)
+        all_avgs = list(self._daily_rlp_buffer.values()) + [today_rlp]
+        return round(mean(all_avgs), 5)
 
     @property
     def monthly_average_spp(self) -> float | None:
         """Rolling calendar-month SPP-weighted average in c€/kWh, rounded to 5dp."""
         if self.average is None:
             return None
-        # Today's live SPP contribution
-        today_entry = self._compute_spp_entry(date.today(), self._data_today)
-        all_entries = list(self._daily_spp_buffer.values()) + [today_entry]
-        total_wt = sum(wt for _, wt in all_entries)
-        if total_wt == 0:
-            return None
-        total_ws = sum(ws for ws, _ in all_entries)
-        return round(total_ws / total_wt, 5)
+        today_spp = self._compute_spp_avg(date.today(), self._data_today)
+        all_avgs = list(self._daily_spp_buffer.values()) + [today_spp]
+        return round(mean(all_avgs), 5)
 
     def rlp_fully_available(self) -> bool:
         """Return True if all days in the rolling window had real RLP weights."""
