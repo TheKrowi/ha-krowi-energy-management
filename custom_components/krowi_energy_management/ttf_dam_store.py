@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from dateutil.relativedelta import relativedelta # type: ignore
 
@@ -93,7 +93,7 @@ class TtfDamStore:
             last = entries[-1]
             today_raw = last["y"]
             # Parse Unix ms timestamp to date
-            last_date = datetime.utcfromtimestamp(last["x"] / 1000).date()
+            last_date = datetime.fromtimestamp(last["x"] / 1000, tz=timezone.utc).date()
         except (KeyError, IndexError, ValueError, TypeError) as exc:
             _LOGGER.error("TtfDamStore: failed to parse response: %s", exc)
             async_dispatcher_send(self._hass, SIGNAL_TTF_DAM_UPDATE)
