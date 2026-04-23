@@ -517,6 +517,19 @@ class NordpoolBeStore:
             d += timedelta(days=1)
         return self._rlp_store.has_date(date.today())
 
+    def spp_fully_available(self) -> bool:
+        """Return True if all days in the rolling window had real SPP weights."""
+        if self._spp_store is None:
+            return False
+        cutoff = date.today() - relativedelta(months=1)
+        yesterday = date.today() - timedelta(days=1)
+        d = cutoff
+        while d <= yesterday:
+            if not self._spp_store.has_date(d):
+                return False
+            d += timedelta(days=1)
+        return self._spp_store.has_date(date.today())
+
     @property
     def low_price(self) -> bool | None:
         """True if current_price < average * low_price_cutoff."""

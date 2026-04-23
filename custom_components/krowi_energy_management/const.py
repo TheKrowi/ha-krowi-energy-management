@@ -44,6 +44,7 @@ UID_ELECTRICITY_PRICE_EXPORT_EUR = "electricity_current_price_export_eur"
 UID_ELECTRICITY_SPOT_CURRENT_PRICE = "electricity_spot_current_price"
 UID_ELECTRICITY_SPOT_AVERAGE_PRICE = "electricity_spot_average_price"
 UID_ELECTRICITY_SPOT_AVERAGE_PRICE_RLP = "electricity_spot_average_price_rlp"
+UID_ELECTRICITY_SPOT_AVERAGE_PRICE_SPP = "electricity_spot_average_price_spp"
 
 # Unique ID suffixes — electricity cost sensors
 UID_ELECTRICITY_IMPORT_COST_T1 = "electricity_import_cost_tariff_1"
@@ -281,7 +282,9 @@ NAMES: dict[tuple[str, str], str] = {
     (UID_ELECTRICITY_SPOT_AVERAGE_PRICE, LANG_EN): "Monthly average price (EPEX SPOT)",
     (UID_ELECTRICITY_SPOT_AVERAGE_PRICE, LANG_NL): "Gemiddelde maandprijs (EPEX SPOT)",
     (UID_ELECTRICITY_SPOT_AVERAGE_PRICE_RLP, LANG_EN): "Monthly average price RLP-weighted (EPEX SPOT)",
-    (UID_ELECTRICITY_SPOT_AVERAGE_PRICE_RLP, LANG_NL): "Gewogen maandgemiddelde (EPEX SPOT)",
+    (UID_ELECTRICITY_SPOT_AVERAGE_PRICE_RLP, LANG_NL): "RLP-gewogen maandgemiddelde (EPEX SPOT)",
+    (UID_ELECTRICITY_SPOT_AVERAGE_PRICE_SPP, LANG_EN): "Monthly average price SPP-weighted (EPEX SPOT)",
+    (UID_ELECTRICITY_SPOT_AVERAGE_PRICE_SPP, LANG_NL): "SPP-gewogen maandgemiddelde (EPEX SPOT)",
     # Electricity cost sensors
     (UID_ELECTRICITY_IMPORT_COST_T1, LANG_EN): "Import cost (tariff 1)",
     (UID_ELECTRICITY_IMPORT_COST_T1, LANG_NL): "Importkosten (tarief 1)",

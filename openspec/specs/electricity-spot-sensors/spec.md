@@ -105,10 +105,47 @@ fell back to the unweighted approximation.
 
 ---
 
+### Requirement: Electricity spot SPP-weighted average price sensor
+The component SHALL expose a sensor with unique ID `electricity_spot_average_price_spp`,
+English display name "Monthly average price SPP-weighted (EPEX SPOT)", and Dutch display
+name "SPP-gewogen maandgemiddelde (EPEX SPOT)" that reports the rolling calendar-month
+**SPP-weighted** average of Nord Pool BE spot prices in `c€/kWh`.
+
+`native_unit_of_measurement` SHALL be `"c€/kWh"`. `state_class` SHALL be
+`SensorStateClass.MEASUREMENT`. The sensor SHALL update on every `SIGNAL_NORDPOOL_UPDATE`
+dispatch. The sensor SHALL be `unavailable` when `store.monthly_average_spp` is `None`.
+
+The sensor SHALL expose a `spp_available` boolean attribute: `True` when all days in the
+rolling window have actual SPP weights from `SynergridSPPStore`; `False` when any day
+fell back to the unweighted approximation.
+
+#### Scenario: Sensor reports SPP-weighted monthly average
+- **WHEN** the store has a full 30-day SPP buffer and today's weighted average is available
+- **THEN** `electricity_spot_average_price_spp` state SHALL be `store.monthly_average_spp`
+
+#### Scenario: Sensor is unavailable when store has no data
+- **WHEN** `store.monthly_average_spp` is `None`
+- **THEN** `electricity_spot_average_price_spp` state SHALL be `unavailable`
+
+#### Scenario: Sensor display name matches language setting
+- **WHEN** language is set to `"nl"`
+- **THEN** the sensor friendly name SHALL be `"SPP-gewogen maandgemiddelde (EPEX SPOT)"`
+- **WHEN** language is set to `"en"`
+- **THEN** the sensor friendly name SHALL be `"Monthly average price SPP-weighted (EPEX SPOT)"`
+
+#### Scenario: SPP attribute reflects weight availability
+- **WHEN** all days in the window have weights from `SynergridSPPStore`
+- **THEN** `spp_available` SHALL be `True`
+- **WHEN** one or more days fell back to unweighted
+- **THEN** `spp_available` SHALL be `False`
+
+---
+
 ### Requirement: Spot sensors belong to the electricity device
-Both `electricity_spot_current_price`, `electricity_spot_average_price`, and
-`electricity_spot_average_price_rlp` SHALL be associated with the `DeviceInfo` for the
-electricity config entry (identifiers `(DOMAIN, f"{entry_id}_electricity")`).
+Both `electricity_spot_current_price`, `electricity_spot_average_price`,
+`electricity_spot_average_price_rlp`, and `electricity_spot_average_price_spp` SHALL be
+associated with the `DeviceInfo` for the electricity config entry (identifiers
+`(DOMAIN, f"{entry_id}_electricity")`).
 
 #### Scenario: Spot sensors appear under the Electricity device in HA
 - **WHEN** the electricity config entry is loaded
@@ -117,11 +154,12 @@ electricity config entry (identifiers `(DOMAIN, f"{entry_id}_electricity")`).
 ---
 
 ### Requirement: Spot sensors are set up as part of the electricity platform
-All three spot sensors SHALL be instantiated in `sensor.py`'s `async_setup_entry` when
+All four spot sensors SHALL be instantiated in `sensor.py`'s `async_setup_entry` when
 `domain_type == DOMAIN_TYPE_ELECTRICITY`. They SHALL be added alongside the existing
 electricity sensors.
 
 #### Scenario: Spot sensors present on electricity entry load
 - **WHEN** the electricity config entry loads
-- **THEN** `electricity_spot_current_price`, `electricity_spot_average_price`, and
-  `electricity_spot_average_price_rlp` SHALL all be registered in HA
+- **THEN** `electricity_spot_current_price`, `electricity_spot_average_price`,
+  `electricity_spot_average_price_rlp`, and `electricity_spot_average_price_spp` SHALL all
+  be registered in HA

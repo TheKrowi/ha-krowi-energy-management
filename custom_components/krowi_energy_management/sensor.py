@@ -70,6 +70,7 @@ from .const import (
     UID_ELECTRICITY_PRICE_IMPORT_EUR,
     UID_ELECTRICITY_SPOT_AVERAGE_PRICE,
     UID_ELECTRICITY_SPOT_AVERAGE_PRICE_RLP,
+    UID_ELECTRICITY_SPOT_AVERAGE_PRICE_SPP,
     UID_ELECTRICITY_SPOT_CURRENT_PRICE,
     UID_ELECTRICITY_SURCHARGE_FORMULA,
     UID_ELECTRICITY_SURCHARGE_RATE,
@@ -134,6 +135,7 @@ async def async_setup_entry(
             ElectricitySpotCurrentPriceSensor(hass, entry_id, device_info, language),
             ElectricitySpotAverageSensor(hass, entry_id, device_info, language),
             ElectricitySpotAveragePriceRLPSensor(hass, entry_id, device_info, language),
+            ElectricitySpotAveragePriceSPPSensor(hass, entry_id, device_info, language),
             ElectricitySurchargeSensor(hass, entry_id, unit, device_info, language),
             ElectricitySurchargeFormulaSensor(hass, entry_id, unit, device_info, language),
             ElectricityImportPriceSensor(hass, entry_id, device_info, language),
@@ -381,6 +383,53 @@ class ElectricitySpotAveragePriceRLPSensor(KrowiSensor):
             return {"rlp_available": False}
         return {
             "rlp_available": store.rlp_fully_available(),
+        }
+
+
+class ElectricitySpotAveragePriceSPPSensor(KrowiSensor):
+    """Rolling calendar-month SPP-weighted average Nord Pool BE spot price in c€/kWh."""
+
+    _attr_icon = "mdi:currency-eur"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = UNIT_ELECTRICITY
+
+    def __init__(self, hass, entry_id, device_info, language=LANG_EN):
+        super().__init__(hass, entry_id, device_info)
+        self._attr_unique_id = UID_ELECTRICITY_SPOT_AVERAGE_PRICE_SPP
+        self.entity_id = f"sensor.{UID_ELECTRICITY_SPOT_AVERAGE_PRICE_SPP}"
+        self._attr_name = NAMES.get(
+            (UID_ELECTRICITY_SPOT_AVERAGE_PRICE_SPP, language),
+            NAMES[(UID_ELECTRICITY_SPOT_AVERAGE_PRICE_SPP, LANG_EN)],
+        )
+
+    def _get_store(self):
+        return self.hass.data.get(DOMAIN, {}).get("nordpool_store")
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._unsub_listeners.append(
+            async_dispatcher_connect(self.hass, SIGNAL_NORDPOOL_UPDATE, self._on_update)
+        )
+        self._on_update()
+
+    @callback
+    def _on_update(self) -> None:
+        store = self._get_store()
+        if store is None or store.monthly_average_spp is None:
+            self._attr_native_value = None
+            self._attr_available = False
+        else:
+            self._attr_native_value = store.monthly_average_spp
+            self._attr_available = True
+        self.async_write_ha_state()
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        store = self._get_store()
+        if store is None:
+            return {"spp_available": False}
+        return {
+            "spp_available": store.spp_fully_available(),
         }
 
 

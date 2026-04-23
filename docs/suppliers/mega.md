@@ -95,7 +95,7 @@ $$
 
 | Variable | Source | Notes |
 |---|---|---|
-| $\text{EPEX}_{\text{SPP}}$ | `NordpoolBeStore.monthly_average_spp` (internal) | c€/kWh, SPP-weighted rolling monthly average; **no intermediate sensor entity** (see nuances) |
+| $\text{EPEX}_{\text{SPP}}$ | `sensor.electricity_spot_average_price_spp` | c€/kWh, SPP-weighted rolling monthly average; sensor mirrors `NordpoolBeStore.monthly_average_spp` |
 | $0.94$ | Mega buy-back factor (hardcoded) | Mega retains 6% margin on export |
 | $-1.7$ | Fixed deduction (hardcoded) | Administrative/handling fee (c€/kWh) |
 
@@ -121,11 +121,9 @@ Synergrid publishes both an **ex-ante** (forward-looking, published at start of 
 
 The sensor uses the **ex-ante** profile because ex-post is only available after the month closes — it cannot be used for a live sensor. In practice ex-ante and ex-post shapes correlate well, but divergence can be meaningful during months with atypical solar or wind generation patterns. This is a known, unavoidable limitation.
 
-**No intermediate sensor entity for SPP average**
+**SPP sensor entity**
 
-Unlike import — which exposes the RLP-weighted average as `sensor.electricity_spot_average_price_rlp` — there is no `sensor.electricity_spot_average_price_spp` entity. The export price sensor reads `NordpoolBeStore.monthly_average_spp` directly and subscribes to `SIGNAL_NORDPOOL_UPDATE` for reactivity.
-
-Note: this is an omission, not a deliberate design decision. The import price sensor also reads `store.monthly_average_rlp` directly and does not depend on the RLP sensor entity. `sensor.electricity_spot_average_price_rlp` exists purely as a transparency/dashboard entity. An equivalent SPP sensor could be added for the same reason — to let users see the SPP-weighted EPEX average independently — but it has not been created yet.
+The SPP-weighted monthly average is exposed as `sensor.electricity_spot_average_price_spp`, mirroring `NordpoolBeStore.monthly_average_spp`. The export price sensor also reads `store.monthly_average_spp` directly via `SIGNAL_NORDPOOL_UPDATE` and does not depend on the SPP sensor entity. `sensor.electricity_spot_average_price_spp` exists purely as a transparency/dashboard entity — it lets users see the SPP-weighted EPEX average independently.
 
 ### Catalog entry (`const.py`)
 
