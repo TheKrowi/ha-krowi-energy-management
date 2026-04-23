@@ -15,7 +15,7 @@ def _patch_write_ha_state(monkeypatch):
         MagicMock(),
     )
 
-from custom_components.krowi_energy_management.sensor import (
+from custom_components.krowi_energy_management.sensor_electricity import (
     ElectricityExportPriceEurSensor,
     ElectricityImportPriceEurSensor,
     ElectricityImportPriceSensor,
@@ -23,9 +23,13 @@ from custom_components.krowi_energy_management.sensor import (
     ElectricityNetCostSensor,
     ElectricitySurchargeFormulaSensor,
     ElectricitySurchargeSensor,
-    ElectricitySupplierImportPriceSensor,
     ElectricityTotalExportRevenueSensor,
     ElectricityTotalImportCostSensor,
+)
+from custom_components.krowi_energy_management.sensor_supplier import (
+    ElectricitySupplierImportPriceSensor,
+)
+from custom_components.krowi_energy_management.sensor_gas import (
     GasCalorificValueSensor,
     GasConsumptionKwhSensor,
     GasCurrentPriceEurSensor,
