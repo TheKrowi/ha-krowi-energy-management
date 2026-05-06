@@ -99,6 +99,9 @@ class NordpoolBeStore:
         # so after a restart old entries outside the calendar-month window would persist
         # until the next midnight tick and inflate the weighted averages).
         self._trim_buffer()
+        self._save_buffer()
+        self._save_rlp_buffer()
+        self._save_spp_buffer()
 
         # Initial fetches
         await self.async_fetch_today()

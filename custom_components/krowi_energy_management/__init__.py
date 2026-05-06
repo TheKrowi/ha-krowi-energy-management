@@ -114,6 +114,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         store = NordpoolBeStore()
         hass.data.setdefault(DOMAIN, {})["nordpool_store"] = store
         await store.async_start(hass, low_price_cutoff, rlp_store, spp_store)
+        _async_register_electricity_services(hass)
 
     # For gas entries, start the TTF DAM store and GCV store before platform setup
     if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_GAS:
@@ -152,6 +153,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         spp_store = hass.data.get(DOMAIN, {}).pop("spp_store", None)
         if spp_store:
             await spp_store.async_stop()
+        _async_unregister_electricity_services(hass)
 
     # Stop the TTF DAM store and GCV store for gas entries
     if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_GAS:
@@ -265,4 +267,94 @@ def _async_register_gcv_services(hass: HomeAssistant) -> None:
 def _async_unregister_gcv_services(hass: HomeAssistant) -> None:
     """Remove GCV diagnostic services when the gas entry is unloaded."""
     for service in (_GCV_SERVICE_TEST_CONNECTION, _GCV_SERVICE_TEST_FETCH, _GCV_SERVICE_STORE_STATE):
+        hass.services.async_remove(DOMAIN, service)
+
+
+# ---------------------------------------------------------------------------
+# Electricity (RLP / SPP) diagnostic services
+# ---------------------------------------------------------------------------
+
+_ELEC_SERVICE_RLP_STORE_STATE = "rlp_store_state"
+_ELEC_SERVICE_SPP_STORE_STATE = "spp_store_state"
+_ELEC_SERVICE_RLP_TEST_FETCH = "rlp_test_fetch"
+_ELEC_SERVICE_SPP_TEST_FETCH = "spp_test_fetch"
+
+_SCHEMA_ELEC_TEST_FETCH = vol.Schema(
+    {
+        vol.Optional("year"): vol.All(vol.Coerce(int), vol.Range(min=2020, max=2040)),
+    }
+)
+
+
+def _async_register_electricity_services(hass: HomeAssistant) -> None:
+    """Register RLP / SPP diagnostic services (idempotent)."""
+
+    if hass.services.has_service(DOMAIN, _ELEC_SERVICE_RLP_STORE_STATE):
+        return
+
+    def _rlp_store_state(call: ServiceCall) -> dict:
+        rlp_store: SynergridRLPStore | None = hass.data.get(DOMAIN, {}).get("rlp_store")
+        if rlp_store is None:
+            return {"error": "RLP store not initialised (no electricity config entry)"}
+        return rlp_store.action_store_state()
+
+    def _spp_store_state(call: ServiceCall) -> dict:
+        spp_store: SynergridSPPStore | None = hass.data.get(DOMAIN, {}).get("spp_store")
+        if spp_store is None:
+            return {"error": "SPP store not initialised (no electricity config entry)"}
+        return spp_store.action_store_state()
+
+    async def _rlp_test_fetch(call: ServiceCall) -> dict:
+        rlp_store: SynergridRLPStore | None = hass.data.get(DOMAIN, {}).get("rlp_store")
+        if rlp_store is None:
+            return {"ok": False, "error": "RLP store not initialised (no electricity config entry)"}
+        from datetime import date  # noqa: PLC0415
+        year = int(call.data.get("year", date.today().year))
+        return await rlp_store.async_action_test_fetch(year)
+
+    async def _spp_test_fetch(call: ServiceCall) -> dict:
+        spp_store: SynergridSPPStore | None = hass.data.get(DOMAIN, {}).get("spp_store")
+        if spp_store is None:
+            return {"ok": False, "error": "SPP store not initialised (no electricity config entry)"}
+        from datetime import date  # noqa: PLC0415
+        year = int(call.data.get("year", date.today().year))
+        return await spp_store.async_action_test_fetch(year)
+
+    hass.services.async_register(
+        DOMAIN,
+        _ELEC_SERVICE_RLP_STORE_STATE,
+        _rlp_store_state,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        _ELEC_SERVICE_SPP_STORE_STATE,
+        _spp_store_state,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        _ELEC_SERVICE_RLP_TEST_FETCH,
+        _rlp_test_fetch,
+        schema=_SCHEMA_ELEC_TEST_FETCH,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        _ELEC_SERVICE_SPP_TEST_FETCH,
+        _spp_test_fetch,
+        schema=_SCHEMA_ELEC_TEST_FETCH,
+        supports_response=SupportsResponse.ONLY,
+    )
+    _LOGGER.debug("Electricity (RLP/SPP) diagnostic services registered")
+
+
+def _async_unregister_electricity_services(hass: HomeAssistant) -> None:
+    """Remove electricity diagnostic services when the electricity entry is unloaded."""
+    for service in (
+        _ELEC_SERVICE_RLP_STORE_STATE,
+        _ELEC_SERVICE_SPP_STORE_STATE,
+        _ELEC_SERVICE_RLP_TEST_FETCH,
+        _ELEC_SERVICE_SPP_TEST_FETCH,
+    ):
         hass.services.async_remove(DOMAIN, service)

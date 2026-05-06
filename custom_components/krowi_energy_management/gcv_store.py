@@ -278,11 +278,9 @@ class GcvStore:
                 key = self._ym_key(year, month)
                 self._history[key] = value
                 _LOGGER.debug("GcvStore: stored %s = %.4f kWh/m³", key, value)
-                await self._save_history()
 
         self._prune_history()
-        if missing:
-            await self._save_history()
+        await self._save_history()
 
         # Freshness: most recent target successfully in history
         most_recent_key = self._ym_key(*targets[-1])

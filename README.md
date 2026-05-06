@@ -178,7 +178,15 @@ Fetches 15-minute EPEX SPOT Belgium day-ahead price slots in EUR. Values are con
 
 Downloads and parses the annual Synergrid RLP0N residential consumption profile for the configured DSO. Provides 96 quarter-hour weight values per calendar day.
 
-**Fetch schedule:** Once per year on first install (or cache miss). The parsed data is persisted in HA Storage under key `krowi_energy_management_rlp_{year}`. There is **no automatic annual renewal** — it reloads the next year's file when the new year begins and the cache misses.
+**Fetch schedule:**
+
+| Trigger | Action |
+|---|---|
+| Startup | Load from HA Storage cache for the current year; download if today's date is absent from cache |
+| `00:00:01` on 1 January | Swap to new year's storage key; load from cache or download |
+| `00:00:01`, 26–31 December | Attempt to pre-fetch next year's profile; send HA notification on success or failure |
+
+**Persistence:** Cached in HA Storage under `krowi_energy_management_rlp_{year}`. Cache is invalidated if the configured DSO name changes.
 
 **Dependency:** `pyxlsb>=1.0.10` (declared in `manifest.json`).
 
@@ -191,7 +199,7 @@ Downloads and parses the annual Synergrid RLP0N residential consumption profile 
 
 Downloads and parses the annual Synergrid SPP ex-ante solar production profile. Provides 96 quarter-hour weight values per calendar day (zero at night, peak at noon).
 
-**Fetch schedule:** Same as RLPStore — once per year, cached in HA Storage under `krowi_energy_management_spp_{year}`. Parsed using stdlib (`zipfile` + `xml.etree.ElementTree`), no extra dependency.
+**Fetch schedule:** Same triggers as RLPStore — startup cache load/download, Jan 1 year rollover, and Dec 26–31 pre-fetch with HA notifications. Cached under `krowi_energy_management_spp_{year}`. Parsed using stdlib (`zipfile` + `xml.etree.ElementTree`), no extra dependency.
 
 ---
 
@@ -234,6 +242,225 @@ Fetches the monthly GCV CSV file for the configured GOS zone from the Atrias API
 
 ---
 
+## Diagnostic Actions
+
+Three HA actions (services) are registered when the **Gas** config entry is active. They are callable from **Developer Tools → Actions** and return a response payload — useful for troubleshooting GCV fetch issues without digging into logs.
+
+### `krowi_energy_management.gcv_test_connection`
+
+Performs a plain TLS handshake against `api.atrias.be:443` and reports whether SSL verification succeeds.
+
+**Parameters:** none
+
+**Response:**
+
+| Field | Type | Description |
+|---|---|---|
+| `ok` | `bool` | `true` if the handshake completed without errors |
+| `error` | `string \| null` | Error message if `ok` is `false`, otherwise `null` |
+
+**Example response (success):**
+```json
+{ "ok": true, "error": null }
+```
+
+---
+
+### `krowi_energy_management.gcv_test_fetch`
+
+Performs a live HTTP fetch of the GCV file for the specified month and parses it for the configured GOS zone. Does **not** modify the store state or history.
+
+**Parameters (all optional):**
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `year` | `int` | prior month | Year to fetch (2020–2040) |
+| `month` | `int` | prior month | Month to fetch (1–12) |
+
+**Response:**
+
+| Field | Type | Description |
+|---|---|---|
+| `ok` | `bool` | `true` if a GCV value was successfully parsed |
+| `target_month` | `string` | `"YYYY-MM"` of the fetched file |
+| `zone` | `string` | Configured GOS zone |
+| `http_status` | `int \| null` | HTTP status code returned by the API |
+| `gcv_value` | `float \| null` | Parsed GCV in kWh/m³, or `null` on failure |
+| `error` | `string \| null` | Error description, or `null` on success |
+
+**Example response (success):**
+```json
+{
+  "ok": true,
+  "target_month": "2026-04",
+  "zone": "GOS FLUVIUS - LEUVEN",
+  "http_status": 200,
+  "gcv_value": 10.8732,
+  "error": null
+}
+```
+
+**Example response (file not yet published):**
+```json
+{
+  "ok": false,
+  "target_month": "2026-05",
+  "zone": "GOS FLUVIUS - LEUVEN",
+  "http_status": 404,
+  "gcv_value": null,
+  "error": "404 Not Found — file not yet published by Atrias"
+}
+```
+
+---
+
+### `krowi_energy_management.gcv_store_state`
+
+Returns a snapshot of the current in-memory GCV store state without making any network calls.
+
+**Parameters:** none
+
+**Response:**
+
+| Field | Type | Description |
+|---|---|---|
+| `zone` | `string` | Configured GOS zone |
+| `gcv` | `float \| null` | Current GCV value in kWh/m³ (`null` if no data yet) |
+| `data_is_fresh` | `bool` | `true` when the most recent prior-month file has been fetched |
+| `target_month` | `string` | `"YYYY-MM"` of the month currently being targeted |
+| `history_count` | `int` | Number of months in history (max 12) |
+| `history` | `object` | Full rolling history as `{ "YYYY-MM": float }`, sorted chronologically |
+
+**Example response:**
+```json
+{
+  "zone": "GOS FLUVIUS - LEUVEN",
+  "gcv": 10.8732,
+  "data_is_fresh": true,
+  "target_month": "2026-04",
+  "history_count": 12,
+  "history": {
+    "2025-05": 10.6210,
+    "2025-06": 10.5890,
+    "...": "...",
+    "2026-04": 10.8732
+  }
+}
+```
+
+---
+
+### `krowi_energy_management.rlp_store_state`
+
+Returns a snapshot of the current in-memory RLP store state without making any network calls.
+
+**Parameters:** none
+
+**Response:**
+
+| Field | Type | Description |
+|---|---|---|
+| `available` | `bool` | `true` if weights are loaded and the store is operational |
+| `loaded_year` | `int` | Year the currently loaded profile covers |
+| `dso` | `string` | Configured DSO name |
+| `date_count` | `int` | Number of dates with weight data |
+| `has_today` | `bool` | `true` if today's date is present in the weights |
+| `first_date` | `string \| null` | First date in the profile (`YYYY-MM-DD`) |
+| `last_date` | `string \| null` | Last date in the profile (`YYYY-MM-DD`) |
+
+---
+
+### `krowi_energy_management.spp_store_state`
+
+Returns a snapshot of the current in-memory SPP store state without making any network calls.
+
+**Parameters:** none
+
+**Response:**
+
+| Field | Type | Description |
+|---|---|---|
+| `available` | `bool` | `true` if weights are loaded and the store is operational |
+| `loaded_year` | `int` | Year the currently loaded profile covers |
+| `date_count` | `int` | Number of dates with weight data |
+| `has_today` | `bool` | `true` if today's date is present in the weights |
+| `first_date` | `string \| null` | First date in the profile (`YYYY-MM-DD`) |
+| `last_date` | `string \| null` | Last date in the profile (`YYYY-MM-DD`) |
+
+---
+
+### `krowi_energy_management.rlp_test_fetch`
+
+Performs a live download and parse of the RLP profile for the specified year. Does **not** modify the store state.
+
+**Parameters (optional):**
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `year` | `int` | current year | Year to fetch (2020–2040) |
+
+**Response:**
+
+| Field | Type | Description |
+|---|---|---|
+| `ok` | `bool` | `true` if the profile was successfully downloaded and parsed |
+| `year` | `int` | Year that was fetched |
+| `dso` | `string` | Configured DSO name |
+| `http_status` | `int \| null` | HTTP status code from the download |
+| `date_count` | `int \| null` | Number of dates parsed, or `null` on failure |
+| `has_today` | `bool \| null` | `true` if today's date is in the parsed data |
+| `first_date` | `string \| null` | First date in the parsed profile |
+| `last_date` | `string \| null` | Last date in the parsed profile |
+| `error` | `string \| null` | Error description, or `null` on success |
+
+---
+
+### `krowi_energy_management.spp_test_fetch`
+
+Performs a live download and parse of the SPP profile for the specified year. Does **not** modify the store state.
+
+**Parameters (optional):**
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `year` | `int` | current year | Year to fetch (2020–2040) |
+
+**Response:**
+
+| Field | Type | Description |
+|---|---|---|
+| `ok` | `bool` | `true` if the profile was successfully downloaded and parsed |
+| `year` | `int` | Year that was fetched |
+| `http_status` | `int \| null` | HTTP status code from the download |
+| `date_count` | `int \| null` | Number of dates parsed, or `null` on failure |
+| `has_today` | `bool \| null` | `true` if today's date is in the parsed data |
+| `first_date` | `string \| null` | First date in the parsed profile |
+| `last_date` | `string \| null` | Last date in the parsed profile |
+| `error` | `string \| null` | Error description, or `null` on success |
+
+---
+
+## Persistent Notifications
+
+The integration creates HA persistent notifications for conditions that affect sensor availability or indicate degraded operation. All notifications appear in the HA notification bell and can be dismissed manually. Failure notifications are automatically dismissed when the underlying issue resolves.
+
+### RLP / SPP profile notifications (electricity entry)
+
+| Notification ID | Condition | Repeats? |
+|---|---|---|
+| `krowi_rlp_load_failed` | RLP download or parse failure at startup or year rollover | Every occurrence |
+| `krowi_rlp_today_missing` | RLP profile loaded but today's date absent from weights | Every occurrence |
+| `krowi_rlp_prefetch_failed` | Dec 26–31 nightly pre-fetch of next year's RLP profile fails | Every midnight until resolved |
+| `krowi_rlp_prefetch_success` | Dec 26–31 pre-fetch of next year's RLP profile succeeds | Once per session |
+| `krowi_spp_load_failed` | SPP download or parse failure at startup or year rollover | Every occurrence |
+| `krowi_spp_today_missing` | SPP profile loaded but today's date absent from weights | Every occurrence |
+| `krowi_spp_prefetch_failed` | Dec 26–31 nightly pre-fetch of next year's SPP profile fails | Every midnight until resolved |
+| `krowi_spp_prefetch_success` | Dec 26–31 pre-fetch of next year's SPP profile succeeds | Once per session |
+
+The `load_failed` and `today_missing` notifications are dismissed automatically when the profile is next successfully loaded from cache or downloaded.
+
+---
+
 ## HA Energy Dashboard Compatibility
 
 The following sensors can be used directly in the HA Energy Dashboard:
@@ -260,9 +487,10 @@ The `*_eur` bridge sensors exist solely because the HA Energy Dashboard requires
 
 ### Synergrid RLP/SPP profile download (`synergrid.be`)
 
-- **Download failure at startup:** logged at `WARNING`; `rlp_store.available = False`; `electricity_spot_average_price_rlp`, `electricity_spot_average_price_spp`, and all supplier price sensors become `unavailable`.
-- **Cached data present but today not in cache (year rollover):** triggers a fresh download attempt.
-- **No retry after failure:** the next attempt is at the next HA restart or reload. This is intentional — the file is a static annual profile.
+- **Download or parse failure at startup:** A persistent HA notification (`krowi_rlp_load_failed` / `krowi_spp_load_failed`) is created with error details. `available = False`; weighted sensors fall back to unweighted means. Restart HA to retry.
+- **Download or parse failure at year rollover (Jan 1):** Same notification, message indicates sensors are falling back to unweighted means. No restart required — stores will retry on the next HA reload.
+- **Profile loaded but today's date not present in weights:** A `krowi_rlp_today_missing` / `krowi_spp_today_missing` notification is created. Only today's slot uses the unweighted fallback; historical buffer values are unaffected. Dismissed automatically when resolved.
+- **Dec 26–31 pre-fetch failure:** A `krowi_rlp_prefetch_failed` / `krowi_spp_prefetch_failed` notification is created each midnight until the fetch succeeds or the year rolls over.
 
 ### Elindus TTF DAM API (`mijn.elindus.be`)
 
@@ -386,6 +614,8 @@ Detailed findings per store, produced during a code review on 2026-05-06.
 
 **No HTTP timeout** — `_async_fetch` calls `session.get(url)` with no timeout. A hung connection from the Nord Pool API holds the async slot indefinitely. All four daily tick dispatches would pile up behind it.
 
+**Startup trim without save** — `async_start` calls `_trim_buffer()` to remove stale entries from all three in-memory buffers, but omits the matching `_save_buffer()` / `_save_rlp_buffer()` / `_save_spp_buffer()` calls. Trimmed entries persisted in HA Storage and were reloaded again on the next restart, causing the trim to run on every startup without ever shrinking the stored file. Fixed alongside the GCV save fix.
+
 **`low_price` semantics mismatch with README** — The Configuration table describes "Low price cutoff" as a "Threshold (c€/kWh) below which `low_price` is `true`", but the code computes `current_price < average * cutoff`. With the default `1.0` this means "below today's average". The behaviour is correct and useful; the documentation is wrong.
 
 **Year boundary — RLP/SPP weights go stale silently** — `NordpoolBeStore` holds references to `_rlp_store` and `_spp_store` which are loaded once at startup, keyed to the year. If HA runs continuously over 1 January, new-year dates are absent from those stores. `_compute_rlp_avg` / `_compute_spp_avg` fall back to the unweighted mean with no log message or signal.
@@ -412,15 +642,15 @@ Detailed findings per store, produced during a code review on 2026-05-06.
 
 **Sequential gap-fill at startup** — on first install, `_fill_missing_history` fetches up to 12 months sequentially. This is 12 network round-trips in series before any sensor state is dispatched. Acceptable for a monthly store, but worth noting.
 
-**`_save_history` awaited inside loop** — `_fill_missing_history` awaits `_save_history()` after each successful month fetch. On a first-install gap-fill of 12 months, this results in up to 12 storage writes. A single save after the loop would be sufficient.
+**`_save_history` awaited inside loop; missing save after prune** — `_fill_missing_history` awaited `_save_history()` inside the loop per fetched month (up to 12 writes on first install), and the post-loop save was guarded by `if missing:`, meaning a prune-only run (all months already cached but history oversized) never wrote back. Fixed: in-loop save removed, post-loop save is now unconditional. Fixed in 0.0.31.
 
 ---
 
 ### SynergridRLPStore & SynergridSPPStore
 
-**No year-boundary handling** — both stores load once at startup, keyed to `date.today().year`. A HA instance running continuously over 1 January retains the prior year's weights indefinitely. Dates in the new year are absent; `NordpoolBeStore` silently falls back to unweighted means for all RLP/SPP-dependent sensors.
+**Year-boundary handling** — both stores now subscribe to a midnight time-change listener and detect year changes at `00:00:01` on 1 January. The storage key is swapped to the new year and the profile is reloaded from cache or re-downloaded. From 26–31 December, a daily midnight check attempts to pre-fetch the next year's profile and sends HA notifications on success or failure. Fixed in 0.0.31.
 
-**No retry after download failure** — a transient network error at startup, or after a year rollover, leaves `available = False` permanently until the next HA restart. The annual profile files are static once published; a single retry after 60 s (via `async_call_later`) would cover most transient failures.
+**No retry after startup download failure** — if the Synergrid download fails at HA startup (network error, file not yet published), `available = False` and the store does not retry until the next HA restart or reload. A persistent notification is created with details.
 
 **No HTTP timeout** — same risk as the other stores.
 
@@ -432,25 +662,20 @@ Detailed findings per store, produced during a code review on 2026-05-06.
 
 | Priority | Item | Store(s) affected |
 |---|---|---|
-| ~~High~~ | ~~Remove `verify_ssl=False`~~ | ~~`GcvStore`~~ |
 | High | Add HTTP timeouts to fetch calls | `NordpoolBeStore`, `TtfDamStore`, `GcvStore` |
 | Medium | Replace `date.today()` with `dt_utils.now().date()` | `TtfDamStore`, `GcvStore` |
-| Medium | Year-boundary handling (auto-reload on 1 January) | `SynergridRLPStore`, `SynergridSPPStore` |
 | Medium | Concurrent fetch race at midnight | `TtfDamStore` |
 | Medium | Redundant tomorrow fetch at 13:00 | `NordpoolBeStore` |
 | Low | Persist last-known TTF DAM prices across restarts | `TtfDamStore` |
 | Low | Fix `low_price` / cutoff documentation | README |
-| Low | Save GCV history once after gap-fill loop, not per-month | `GcvStore` |
 
 ### High priority
 
-- ~~**Remove `verify_ssl=False` in `GcvStore`**~~ — ✅ Fixed in 0.0.30. The root cause was a missing GoDaddy G2 intermediate certificate in Atrias's TLS handshake. The fix embeds the intermediate PEM and builds a custom SSL context, restoring full chain verification. Three HA diagnostic actions (`gcv_test_connection`, `gcv_test_fetch`, `gcv_store_state`) were also added.
 - **Add HTTP timeouts to all store fetch calls** — `NordpoolBeStore`, `TtfDamStore`, and `GcvStore` use `session.get(url)` with no timeout. A hung connection blocks the event loop slot indefinitely.
 
 ### Medium priority
 
 - **Replace `date.today()` with `dt_utils.now().date()` in `TtfDamStore` and `GcvStore`** — Belgium is UTC+1/+2. Using `date.today()` (system/UTC time) for freshness checks causes off-by-one errors of 1–2 hours around Belgian midnight.
-- **Year-boundary handling for `SynergridRLPStore` and `SynergridSPPStore`** — both stores are loaded once at startup, keyed to the current year. If HA runs continuously over 1 January without a restart, new-year dates are not in the cache and `NordpoolBeStore` silently falls back to unweighted averages for RLP/SPP-weighted sensors. A `async_track_time_change` at `00:00:01` on 1 January should trigger a re-download for the new year.
 - **Concurrent fetch race at midnight in `TtfDamStore`** — `_on_midnight` and `_on_tick` both fire at `00:00:01` (hour=0, minute=0, second=1), spawning two concurrent fetch tasks. The `_on_tick` handler should skip the fetch when `_on_midnight` has already scheduled one, or the tick handler should guard on `not self._data_is_fresh` only (which it already does — the midnight handler resets the flag first, so this is likely benign but worth confirming).
 - **Redundant tomorrow fetch at 13:00 in `NordpoolBeStore`** — `_on_tick` fires at `13:00:01` (minute=0, second=1) and already retries the tomorrow fetch via `_do_tomorrow_fetch`; `_on_thirteen` fires one second later at `13:01:00` and does the same thing. One of the two triggers is redundant.
 
@@ -458,4 +683,3 @@ Detailed findings per store, produced during a code review on 2026-05-06.
 
 - **Persist last-known TTF DAM prices in `TtfDamStore`** — currently stateless; after a restart with the Elindus API unreachable, both gas spot sensors are `unavailable` until the first successful fetch. Persisting `today_price` and `average` to HA Storage (same pattern as `GcvStore`) would keep sensors available across restarts.
 - **Fix `low_price` description in README** — the "Low price cutoff" option is documented as a "threshold in c€/kWh" but the code computes `current_price < average * cutoff`. With the default `1.0` the meaning is "below today's average". The option description and this README should reflect the actual multiplier semantics.
-- **Save GCV history once after gap-fill loop** — `_fill_missing_history` currently awaits `_save_history()` inside the loop for each month fetched. A single save after the loop completes is sufficient and avoids redundant writes.
