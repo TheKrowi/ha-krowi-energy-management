@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import logging
 
+import voluptuous as vol  # type: ignore
+
 from homeassistant.config_entries import ConfigEntry # type: ignore
 from homeassistant.const import Platform # type: ignore
-from homeassistant.core import HomeAssistant, callback # type: ignore
-from homeassistant.helpers import entity_registry as er # type: ignore
+from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse, callback # type: ignore
+from homeassistant.helpers import config_validation as cv, entity_registry as er # type: ignore
 from homeassistant.helpers.issue_registry import IssueSeverity, async_create_issue, async_delete_issue # type: ignore
 
 from .const import (
@@ -124,6 +126,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         gcv_store = GcvStore(gos_zone)
         hass.data.setdefault(DOMAIN, {})["gcv_store"] = gcv_store
         await gcv_store.async_start(hass)
+        _async_register_gcv_services(hass)
 
     if entry.data.get(CONF_DOMAIN_TYPE) in (DOMAIN_TYPE_ELECTRICITY, DOMAIN_TYPE_GAS, DOMAIN_TYPE_ELECTRICITY_SUPPLIER):
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -158,6 +161,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         gcv_store = hass.data.get(DOMAIN, {}).pop("gcv_store", None)
         if gcv_store:
             await gcv_store.async_stop()
+        _async_unregister_gcv_services(hass)
 
     # Unsubscribe the entity registry listener
     unsub = hass.data.get(DOMAIN, {}).pop(f"unsub_registry_{entry.entry_id}", None)
@@ -170,3 +174,95 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if entry.data.get(CONF_DOMAIN_TYPE) not in (DOMAIN_TYPE_ELECTRICITY, DOMAIN_TYPE_GAS, DOMAIN_TYPE_ELECTRICITY_SUPPLIER):
         return True
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+# ---------------------------------------------------------------------------
+# GCV diagnostic services
+# ---------------------------------------------------------------------------
+
+_GCV_SERVICE_TEST_CONNECTION = "gcv_test_connection"
+_GCV_SERVICE_TEST_FETCH = "gcv_test_fetch"
+_GCV_SERVICE_STORE_STATE = "gcv_store_state"
+
+_SCHEMA_GCV_TEST_FETCH = vol.Schema(
+    {
+        vol.Optional("year"): vol.All(vol.Coerce(int), vol.Range(min=2020, max=2040)),
+        vol.Optional("month"): vol.All(vol.Coerce(int), vol.Range(min=1, max=12)),
+    }
+)
+
+
+def _async_register_gcv_services(hass: HomeAssistant) -> None:
+    """Register GCV diagnostic services (idempotent — skips if already registered)."""
+
+    if hass.services.has_service(DOMAIN, _GCV_SERVICE_TEST_CONNECTION):
+        return
+
+    async def _test_connection(call: ServiceCall) -> dict:
+        gcv_store: GcvStore | None = hass.data.get(DOMAIN, {}).get("gcv_store")
+        if gcv_store is None:
+            return {"ok": False, "error": "GCV store not initialised (no gas config entry)"}
+        return await gcv_store.async_action_test_connection()
+
+    async def _test_fetch(call: ServiceCall) -> dict:
+        gcv_store: GcvStore | None = hass.data.get(DOMAIN, {}).get("gcv_store")
+        if gcv_store is None:
+            return {
+                "ok": False,
+                "target_month": None,
+                "zone": None,
+                "http_status": None,
+                "gcv_value": None,
+                "error": "GCV store not initialised (no gas config entry)",
+            }
+        from datetime import date  # noqa: PLC0415
+        from dateutil.relativedelta import relativedelta  # type: ignore  # noqa: PLC0415
+
+        data = call.data
+        if "year" in data and "month" in data:
+            year, month = int(data["year"]), int(data["month"])
+        else:
+            ref = date.today() - relativedelta(months=1)
+            year, month = ref.year, ref.month
+        return await gcv_store.async_action_test_fetch(year, month)
+
+    def _store_state(call: ServiceCall) -> dict:
+        gcv_store: GcvStore | None = hass.data.get(DOMAIN, {}).get("gcv_store")
+        if gcv_store is None:
+            return {
+                "zone": None,
+                "gcv": None,
+                "data_is_fresh": False,
+                "target_month": None,
+                "history_count": 0,
+                "history": {},
+                "error": "GCV store not initialised (no gas config entry)",
+            }
+        return gcv_store.action_store_state()
+
+    hass.services.async_register(
+        DOMAIN,
+        _GCV_SERVICE_TEST_CONNECTION,
+        _test_connection,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        _GCV_SERVICE_TEST_FETCH,
+        _test_fetch,
+        schema=_SCHEMA_GCV_TEST_FETCH,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        _GCV_SERVICE_STORE_STATE,
+        _store_state,
+        supports_response=SupportsResponse.ONLY,
+    )
+    _LOGGER.debug("GCV diagnostic services registered")
+
+
+def _async_unregister_gcv_services(hass: HomeAssistant) -> None:
+    """Remove GCV diagnostic services when the gas entry is unloaded."""
+    for service in (_GCV_SERVICE_TEST_CONNECTION, _GCV_SERVICE_TEST_FETCH, _GCV_SERVICE_STORE_STATE):
+        hass.services.async_remove(DOMAIN, service)

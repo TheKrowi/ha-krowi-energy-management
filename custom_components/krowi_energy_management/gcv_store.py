@@ -4,6 +4,8 @@ from __future__ import annotations
 import csv
 import io
 import logging
+import socket
+import ssl
 from datetime import date, datetime
 
 from dateutil.relativedelta import relativedelta  # type: ignore
@@ -20,6 +22,67 @@ _LOGGER = logging.getLogger(__name__)
 
 _STORAGE_KEY = f"{DOMAIN}_gcv_history"
 _STORAGE_VERSION = 1
+
+_ATRIAS_HOSTNAME = "api.atrias.be"
+
+# GoDaddy Secure Certificate Authority - G2 intermediate certificate.
+# api.atrias.be's TLS handshake omits this intermediate, causing
+# CERTIFICATE_VERIFY_FAILED with certifi's CA bundle alone.
+# Source: http://certificates.godaddy.com/repository/gdig2.crt (AIA in leaf cert)
+_GODADDY_G2_INTERMEDIATE_PEM = (
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIE0DCCA7igAwIBAgIBBzANBgkqhkiG9w0BAQsFADCBgzELMAkGA1UEBhMCVVMx\n"
+    "EDAOBgNVBAgTB0FyaXpvbmExEzARBgNVBAcTClNjb3R0c2RhbGUxGjAYBgNVBAoT\n"
+    "EUdvRGFkZHkuY29tLCBJbmMuMTEwLwYDVQQDEyhHbyBEYWRkeSBSb290IENlcnRp\n"
+    "ZmljYXRlIEF1dGhvcml0eSAtIEcyMB4XDTExMDUwMzA3MDAwMFoXDTMxMDUwMzA3\n"
+    "MDAwMFowgbQxCzAJBgNVBAYTAlVTMRAwDgYDVQQIEwdBcml6b25hMRMwEQYDVQQH\n"
+    "EwpTY290dHNkYWxlMRowGAYDVQQKExFHb0RhZGR5LmNvbSwgSW5jLjEtMCsGA1UE\n"
+    "CxMkaHR0cDovL2NlcnRzLmdvZGFkZHkuY29tL3JlcG9zaXRvcnkvMTMwMQYDVQQD\n"
+    "EypHbyBEYWRkeSBTZWN1cmUgQ2VydGlmaWNhdGUgQXV0aG9yaXR5IC0gRzIwggEi\n"
+    "MA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC54MsQ1K92vdSTYuswZLiBCGzD\n"
+    "BNliF44v/z5lz4/OYuY8UhzaFkVLVat4a2ODYpDOD2lsmcgaFItMzEUz6ojcnqOv\n"
+    "K/6AYZ15V8TPLvQ/MDxdR/yaFrzDN5ZBUY4RS1T4KL7QjL7wMDge87Am+GZHY23e\n"
+    "cSZHjzhHU9FGHbTj3ADqRay9vHHZqm8A29vNMDp5T19MR/gd71vCxJ1gO7GyQ5HY\n"
+    "pDNO6rPWJ0+tJYqlxvTV0KaudAVkV4i1RFXULSo6Pvi4vekyCgKUZMQWOlDxSq7n\n"
+    "eTOvDCAHf+jfBDnCaQJsY1L6d8EbyHSHyLmTGFBUNUtpTrw700kuH9zB0lL7AgMB\n"
+    "AAGjggEaMIIBFjAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBBjAdBgNV\n"
+    "HQ4EFgQUQMK9J47MNIMwojPX+2yz8LQsgM4wHwYDVR0jBBgwFoAUOpqFBxBnKLbv\n"
+    "9r0FQW4gwZTaD94wNAYIKwYBBQUHAQEEKDAmMCQGCCsGAQUFBzABhhhodHRwOi8v\n"
+    "b2NzcC5nb2RhZGR5LmNvbS8wNQYDVR0fBC4wLDAqoCigJoYkaHR0cDovL2NybC5n\n"
+    "b2RhZGR5LmNvbS9nZHJvb3QtZzIuY3JsMEYGA1UdIAQ/MD0wOwYEVR0gADAzMDEG\n"
+    "CCsGAQUFBwIBFiVodHRwczovL2NlcnRzLmdvZGFkZHkuY29tL3JlcG9zaXRvcnkv\n"
+    "MA0GCSqGSIb3DQEBCwUAA4IBAQAIfmyTEMg4uJapkEv/oV9PBO9sPpyIBslQj6Zz\n"
+    "91cxG7685C/b+LrTW+C05+Z5Yg4MotdqY3MxtfWoSKQ7CC2iXZDXtHwlTxFWMMS2\n"
+    "RJ17LJ3lXubvDGGqv+QqG+6EnriDfcFDzkSnE3ANkR/0yBOtg2DZ2HKocyQetawi\n"
+    "DsoXiWJYRBuriSUBAA/NxBti21G00w9RKpv0vHP8ds42pM3Z2Czqrpv1KrKQ0U11\n"
+    "GIo/ikGQI31bS/6kA1ibRrLDYGCD+H1QQc7CoZDDu+8CL9IVVO5EFdkKrqeKM+2x\n"
+    "LXY2JtwE65/3YR8V3Idv7kaWKK2hJn0KCacuBKONvPi8BDAB\n"
+    "-----END CERTIFICATE-----"
+)
+
+
+def _build_atrias_ssl_context() -> ssl.SSLContext:
+    """Build an SSL context for api.atrias.be with the embedded GoDaddy G2 intermediate.
+
+    api.atrias.be omits the intermediate from its TLS handshake, causing
+    CERTIFICATE_VERIFY_FAILED.  Loading the intermediate as additional trusted
+    data lets Python complete the chain: leaf → G2 intermediate → G2 root (certifi).
+    """
+    try:
+        import certifi  # type: ignore  # noqa: PLC0415
+        ctx = ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        ctx = ssl.create_default_context()
+    ctx.load_verify_locations(cadata=_GODADDY_G2_INTERMEDIATE_PEM)
+    return ctx
+
+
+def _probe_atrias_ssl_blocking() -> None:
+    """Blocking TLS handshake probe against api.atrias.be:443.  Raises on failure."""
+    ctx = _build_atrias_ssl_context()
+    with socket.create_connection((_ATRIAS_HOSTNAME, 443), timeout=10) as raw:
+        with ctx.wrap_socket(raw, server_hostname=_ATRIAS_HOSTNAME):
+            pass  # handshake successful
 
 
 class GcvStore:
@@ -78,6 +141,13 @@ class GcvStore:
         stored = await self._store.async_load()
         if stored and isinstance(stored, dict):
             self._history = {k: float(v) for k, v in stored.items()}
+
+        # SSL probe — log result at INFO so it is visible without debug logging
+        try:
+            await hass.async_add_executor_job(_probe_atrias_ssl_blocking)
+            _LOGGER.info("GcvStore: SSL verification for %s OK", _ATRIAS_HOSTNAME)
+        except Exception as exc:  # noqa: BLE001
+            _LOGGER.warning("GcvStore: SSL verification probe failed: %s", exc)
 
         # Fill any missing months (bootstrap on first install; gap-fill after restarts)
         await self._fill_missing_history()
@@ -148,9 +218,10 @@ class GcvStore:
         )
         url = f"{ATRIAS_GCV_API_URL}{path}?subscription-key={ATRIAS_SUBSCRIPTION_KEY}"
 
-        session = async_get_clientsession(self._hass, verify_ssl=False)
+        session = async_get_clientsession(self._hass)
+        _ssl_ctx = _build_atrias_ssl_context()
         try:
-            async with session.get(url) as resp:
+            async with session.get(url, ssl=_ssl_ctx) as resp:
                 if resp.status == 404:
                     _LOGGER.debug("GcvStore: GCV%d%02d.txt not yet published (404)", year, month)
                     return None
@@ -264,3 +335,95 @@ class GcvStore:
         """At 06:00: retry if not yet fresh."""
         if not self._data_is_fresh:
             self._hass.async_create_task(self._do_refresh())
+
+    # -------------------------------------------------------------------------
+    # Diagnostic actions (called by HA services)
+    # -------------------------------------------------------------------------
+
+    async def async_action_test_connection(self) -> dict:
+        """Run a TLS handshake probe against api.atrias.be and return a result dict.
+
+        Returns ``{"ok": bool, "error": str | None}``.
+        """
+        try:
+            await self._hass.async_add_executor_job(_probe_atrias_ssl_blocking)
+            return {"ok": True, "error": None}
+        except Exception as exc:  # noqa: BLE001
+            return {"ok": False, "error": str(exc)}
+
+    async def async_action_test_fetch(self, year: int, month: int) -> dict:
+        """Perform a fresh API fetch for (year, month) and return a detailed result dict.
+
+        Does **not** modify store state or history.
+
+        Returns::
+
+            {
+                "ok": bool,
+                "target_month": "YYYY-MM",
+                "zone": str,
+                "http_status": int | None,
+                "gcv_value": float | None,
+                "error": str | None,
+            }
+        """
+        path = (
+            f"SectorData%2F02%20Gross%20Calorific%20Values%2F{year}%2F"
+            f"GCV{year}{month:02d}.txt"
+        )
+        url = f"{ATRIAS_GCV_API_URL}{path}?subscription-key={ATRIAS_SUBSCRIPTION_KEY}"
+        target_month = f"{year}-{month:02d}"
+
+        session = async_get_clientsession(self._hass)
+        _ssl_ctx = _build_atrias_ssl_context()
+        http_status: int | None = None
+        gcv_value: float | None = None
+        error: str | None = None
+
+        try:
+            async with session.get(url, ssl=_ssl_ctx) as resp:
+                http_status = resp.status
+                if resp.status == 404:
+                    error = "404 Not Found — file not yet published by Atrias"
+                elif resp.status != 200:
+                    resp.raise_for_status()
+                else:
+                    text = await resp.text(encoding="utf-8-sig")
+                    gcv_value = self._parse_zone_gcv(text, year, month)
+                    if gcv_value is None:
+                        error = f"Parsed OK but zone '{self._zone}' not found in CSV"
+        except Exception as exc:  # noqa: BLE001
+            error = str(exc)
+
+        return {
+            "ok": gcv_value is not None,
+            "target_month": target_month,
+            "zone": self._zone,
+            "http_status": http_status,
+            "gcv_value": gcv_value,
+            "error": error,
+        }
+
+    def action_store_state(self) -> dict:
+        """Return a snapshot of the current in-memory store state.
+
+        Returns::
+
+            {
+                "zone": str,
+                "gcv": float | None,
+                "data_is_fresh": bool,
+                "target_month": "YYYY-MM",
+                "history_count": int,
+                "history": {"YYYY-MM": float, ...},
+            }
+        """
+        ty, tm = self._target_month()
+        return {
+            "zone": self._zone,
+            "gcv": self._gcv,
+            "data_is_fresh": self._data_is_fresh,
+            "target_month": self._ym_key(ty, tm),
+            "history_count": len(self._history),
+            "history": dict(sorted(self._history.items())),
+        }
