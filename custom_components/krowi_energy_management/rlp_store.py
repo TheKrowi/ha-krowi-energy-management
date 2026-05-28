@@ -99,6 +99,13 @@ class SynergridRLPStore:
         key = _STORAGE_KEY_PATTERN.format(year=year)
         self._storage = Store(hass, _STORAGE_VERSION, key)
 
+        # Subscribe to midnight — detect year rollover and December pre-fetch.
+        # Must be registered unconditionally before any early return so that
+        # the warm-cache path (loaded + today present) still arms the listener.
+        self._unsubs.append(
+            async_track_time_change(hass, self._on_midnight, hour=0, minute=0, second=1)
+        )
+
         # Attempt to load from storage
         loaded = await self._async_load(year, dso_name)
         today_iso = date.today().isoformat()
@@ -137,11 +144,6 @@ class SynergridRLPStore:
                 title="Krowi: RLP profile missing today \u2139\ufe0f",
                 notification_id="krowi_rlp_today_missing",
             )
-
-        # Subscribe to midnight — detect year rollover
-        self._unsubs.append(
-            async_track_time_change(hass, self._on_midnight, hour=0, minute=0, second=1)
-        )
 
     async def async_stop(self) -> None:
         """Stop the store: unsubscribe time listeners."""

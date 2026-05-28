@@ -123,6 +123,13 @@ class SynergridSPPStore:
         key = _STORAGE_KEY_PATTERN.format(year=year)
         self._storage = Store(hass, _STORAGE_VERSION, key)
 
+        # Subscribe to midnight — detect year rollover and December pre-fetch.
+        # Must be registered unconditionally before any early return so that
+        # the warm-cache path (loaded + today present) still arms the listener.
+        self._unsubs.append(
+            async_track_time_change(hass, self._on_midnight, hour=0, minute=0, second=1)
+        )
+
         loaded = await self._async_load(year)
         today_iso = date.today().isoformat()
 
@@ -157,11 +164,6 @@ class SynergridSPPStore:
                 title="Krowi: SPP profile missing today \u2139\ufe0f",
                 notification_id="krowi_spp_today_missing",
             )
-
-        # Subscribe to midnight — detect year rollover
-        self._unsubs.append(
-            async_track_time_change(hass, self._on_midnight, hour=0, minute=0, second=1)
-        )
 
     async def async_stop(self) -> None:
         """Stop the store: unsubscribe time listeners."""
@@ -240,7 +242,9 @@ class SynergridSPPStore:
         if (
             raw
             and isinstance(raw, dict)
-            and any(isinstance(v, list) and v for v in raw.values())
+            and raw.get("year") == year
+            and isinstance(raw.get("weights"), dict)
+            and raw["weights"]
         ):
             _LOGGER.info("SynergridSPPStore: year %d profile already cached", year)
             self._next_year_prefetch_done = True
@@ -292,7 +296,7 @@ class SynergridSPPStore:
 
         # Persist to next year's storage key
         try:
-            await next_storage.async_save(weights)
+            await next_storage.async_save({"year": year, "weights": weights})
         except Exception as exc:  # noqa: BLE001
             _LOGGER.warning(
                 "SynergridSPPStore: failed to persist year %d pre-fetch: %s", year, exc
@@ -327,8 +331,22 @@ class SynergridSPPStore:
         if not isinstance(raw, dict):
             return False
 
+        # New format: {"year": y, "weights": {...}}
+        # Old (flat) format: {"2026-01-01": [...], ...} — discard if year key missing
+        if raw.get("year") != year:
+            _LOGGER.debug(
+                "SynergridSPPStore: cached year %s != requested %d — discarding cache",
+                raw.get("year"),
+                year,
+            )
+            return False
+
+        raw_weights = raw.get("weights")
+        if not isinstance(raw_weights, dict):
+            return False
+
         weights: dict[str, list[float]] = {}
-        for key, val in raw.items():
+        for key, val in raw_weights.items():
             if isinstance(val, list) and val:
                 try:
                     weights[key] = [float(w) for w in val]
@@ -428,7 +446,7 @@ class SynergridSPPStore:
     async def _async_persist(self) -> None:
         """Save weights to HA Storage."""
         try:
-            await self._storage.async_save(self._weights)
+            await self._storage.async_save({"year": self._loaded_year, "weights": self._weights})
         except Exception as exc:
             _LOGGER.warning("SynergridSPPStore: failed to save to storage: %s", exc)
 
