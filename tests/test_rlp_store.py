@@ -23,13 +23,14 @@ def _make_store() -> SynergridRLPStore:
 async def test_async_load_rlp_validStorageWithMatchingDso_returnsTrue():
     # Given
     store = _make_store()
+    store._dso_name = "Fluvius Zenne-Dijle"
     store._storage.async_load = AsyncMock(return_value={
         "dso": "Fluvius Zenne-Dijle",
         "weights": {"2026-04-17": [0.5, 0.5]},
     })
 
     # When
-    actual = await store._async_load(2026, "Fluvius Zenne-Dijle")
+    actual = await store._async_load(2026)
 
     # Then
     assert actual is True
@@ -40,13 +41,14 @@ async def test_async_load_rlp_validStorageWithMatchingDso_returnsTrue():
 async def test_async_load_rlp_dsoMismatch_returnsFalse():
     # Given
     store = _make_store()
+    store._dso_name = "Fluvius Zenne-Dijle"
     store._storage.async_load = AsyncMock(return_value={
         "dso": "Fluvius Antwerpen",
         "weights": {"2026-04-17": [0.5, 0.5]},
     })
 
     # When
-    actual = await store._async_load(2026, "Fluvius Zenne-Dijle")
+    actual = await store._async_load(2026)
 
     # Then
     assert actual is False
@@ -56,10 +58,11 @@ async def test_async_load_rlp_dsoMismatch_returnsFalse():
 async def test_async_load_rlp_storageReturnsNone_returnsFalse():
     # Given
     store = _make_store()
+    store._dso_name = "Fluvius Zenne-Dijle"
     store._storage.async_load = AsyncMock(return_value=None)
 
     # When
-    actual = await store._async_load(2026, "Fluvius Zenne-Dijle")
+    actual = await store._async_load(2026)
 
     # Then
     assert actual is False
@@ -69,10 +72,11 @@ async def test_async_load_rlp_storageReturnsNone_returnsFalse():
 async def test_async_load_rlp_storageThrows_returnsFalse():
     # Given
     store = _make_store()
+    store._dso_name = "Fluvius Zenne-Dijle"
     store._storage.async_load = AsyncMock(side_effect=Exception("storage error"))
 
     # When
-    actual = await store._async_load(2026, "Fluvius Zenne-Dijle")
+    actual = await store._async_load(2026)
 
     # Then
     assert actual is False
@@ -88,7 +92,7 @@ async def test_async_load_rlp_emptyWeights_returnsFalse():
     })
 
     # When
-    actual = await store._async_load(2026, "Fluvius Zenne-Dijle")
+    actual = await store._async_load(2026)
 
     # Then
     assert actual is False

@@ -129,7 +129,7 @@ def test_electricitySurcharge_allFourRatesAvailable_returnsSumRounded():
     sensor = ElectricitySurchargeSensor(hass, "entry1", "c€/kWh", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -153,7 +153,7 @@ def test_electricitySurcharge_someRatesUnavailable_treatsAsZero():
     sensor = ElectricitySurchargeSensor(hass, "entry1", "c€/kWh", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -184,7 +184,7 @@ def test_electricitySurchargeFormula_allRatesAvailable_buildsFormatString():
     sensor = ElectricitySurchargeFormulaSensor(hass, "entry1", "c€/kWh", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -206,7 +206,7 @@ def test_electricitySurchargeFormula_ratesMissing_usesZeroesInFormula():
     sensor = ElectricitySurchargeFormulaSensor(hass, "entry1", "c€/kWh", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -236,7 +236,7 @@ def test_electricityImportPrice_allSourcesAvailable_computesCorrectPrice():
     sensor = ElectricityImportPriceSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -257,7 +257,7 @@ def test_electricityImportPrice_spotUnavailable_setsUnavailable():
     sensor = ElectricityImportPriceSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -278,7 +278,7 @@ def test_electricityImportPrice_spotEntityMissing_setsUnavailable():
     sensor = ElectricityImportPriceSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -299,7 +299,7 @@ def test_electricityImportPrice_spotNonNumeric_setsUnavailable():
     sensor = ElectricityImportPriceSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -324,7 +324,7 @@ def test_electricityImportPrice_surchargeUnavailable_treatsAsZero():
     sensor = ElectricityImportPriceSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -354,7 +354,7 @@ def test_gasCurrentPrice_allSourcesAvailable_computesCorrectPrice():
     sensor = GasCurrentPriceSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -375,7 +375,7 @@ def test_gasCurrentPrice_spotUnavailable_setsUnavailable():
     sensor = GasCurrentPriceSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -410,7 +410,7 @@ def test_gasTotalCost_firstReading_anchorsLastM3NoIncrement():
 
     uid_map = {UID_GAS_PRICE_EUR: "sensor.gas_price_eur"}
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -432,7 +432,7 @@ def test_gasTotalCost_positiveConsumption_accumulatesCost():
 
     uid_map = {UID_GAS_PRICE_EUR: "sensor.gas_price_eur"}
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -452,7 +452,7 @@ def test_gasTotalCost_negativeDeltaMeterReplaced_reanchorsWithoutCost():
 
     uid_map = {UID_GAS_PRICE_EUR: "sensor.gas_price_eur"}
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -472,7 +472,7 @@ def test_gasTotalCost_zeroDelta_noIncrement():
 
     uid_map = {UID_GAS_PRICE_EUR: "sensor.gas_price_eur"}
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -491,7 +491,7 @@ def test_gasTotalCost_gcvUnavailable_skipsTick():
 
     uid_map = {UID_GAS_PRICE_EUR: "sensor.gas_price_eur"}
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -513,7 +513,7 @@ def test_gasTotalCost_priceUnavailableUsesLastKnown():
 
     uid_map = {UID_GAS_PRICE_EUR: "sensor.gas_price_eur"}
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -522,7 +522,7 @@ def test_gasTotalCost_priceUnavailableUsesLastKnown():
 
     uid_map = {UID_GAS_PRICE_EUR: "sensor.gas_price_eur"}
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -547,7 +547,7 @@ def test_electricityImportPrice_spotUnknown_setsUnavailable():
     sensor = ElectricityImportPriceSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -571,7 +571,7 @@ def test_gasCurrentPrice_spotUnknown_setsUnavailable():
     sensor = GasCurrentPriceSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -591,7 +591,7 @@ def test_gasCurrentPrice_vatMissing_treatsAsZero():
     sensor = GasCurrentPriceSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -615,7 +615,7 @@ def test_gasTotalCost_meterUnknown_skipsTick():
 
     uid_map = {UID_GAS_PRICE_EUR: "sensor.gas_price_eur"}
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -632,7 +632,7 @@ def test_gasTotalCost_meterNonNumeric_skipsTick():
 
     uid_map = {UID_GAS_PRICE_EUR: "sensor.gas_price_eur"}
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -651,7 +651,7 @@ def test_gasTotalCost_storePresentButGcvNone_skipsTick():
 
     uid_map = {UID_GAS_PRICE_EUR: "sensor.gas_price_eur"}
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -670,7 +670,7 @@ def test_electricityImportPriceEur_sourceAvailable_dividesByHundred():
     sensor = ElectricityImportPriceEurSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -684,7 +684,7 @@ def test_electricityImportPriceEur_sourceUnavailable_returnsNone():
     sensor = ElectricityImportPriceEurSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -698,7 +698,7 @@ def test_electricityImportPriceEur_sourceMissing_returnsNone():
     sensor = ElectricityImportPriceEurSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -717,7 +717,7 @@ def test_electricityExportPriceEur_sourceAvailable_dividesByHundred():
     sensor = ElectricityExportPriceEurSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -731,7 +731,7 @@ def test_electricityExportPriceEur_sourceUnavailable_returnsNone():
     sensor = ElectricityExportPriceEurSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -760,7 +760,7 @@ def test_gasSurcharge_allFourRatesAvailable_returnsSumRounded():
     sensor = GasSurchargeSensor(hass, "entry1", "c€/kWh", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -782,7 +782,7 @@ def test_gasSurcharge_someRatesMissing_treatsAsZero():
     sensor = GasSurchargeSensor(hass, "entry1", "c€/kWh", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -811,7 +811,7 @@ def test_gasSurchargeFormula_allRatesAvailable_buildsFormatString():
     sensor = GasSurchargeFormulaSensor(hass, "entry1", "c€/kWh", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -831,7 +831,7 @@ def test_gasSurchargeFormula_allRatesMissing_usesZeroesInFormula():
     sensor = GasSurchargeFormulaSensor(hass, "entry1", "c€/kWh", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -851,7 +851,7 @@ def test_gasCurrentPriceEur_sourceAvailable_dividesByHundred():
     sensor = GasCurrentPriceEurSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -865,7 +865,7 @@ def test_gasCurrentPriceEur_sourceUnavailable_returnsNone():
     sensor = GasCurrentPriceEurSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -879,7 +879,7 @@ def test_gasCurrentPriceEur_sourceMissing_returnsNone():
     sensor = GasCurrentPriceEurSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -946,7 +946,7 @@ def test_gasCurrentPriceM3_allAvailable_computesCorrectValue():
     sensor = GasCurrentPriceM3Sensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -962,7 +962,7 @@ def test_gasCurrentPriceM3_gcvMissing_setsUnavailable():
     sensor = GasCurrentPriceM3Sensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -980,7 +980,7 @@ def test_gasCurrentPriceM3_priceUnavailable_setsUnavailable():
     sensor = GasCurrentPriceM3Sensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -1152,7 +1152,7 @@ def test_totalImportCost_bothAvailable_returnsSum():
     sensor = ElectricityTotalImportCostSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -1170,7 +1170,7 @@ def test_totalImportCost_onlyT1Available_returnT1():
     sensor = ElectricityTotalImportCostSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -1189,7 +1189,7 @@ def test_totalImportCost_bothUnavailable_setsUnavailable():
     sensor = ElectricityTotalImportCostSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -1212,7 +1212,7 @@ def test_totalExportRevenue_bothAvailable_returnsSum():
     sensor = ElectricityTotalExportRevenueSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -1230,7 +1230,7 @@ def test_totalExportRevenue_bothUnavailable_setsUnavailable():
     sensor = ElectricityTotalExportRevenueSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -1253,7 +1253,7 @@ def test_electricityNetCost_bothAvailable_returnsImportMinusExport():
     sensor = ElectricityNetCostSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -1272,7 +1272,7 @@ def test_electricityNetCost_canGoNegative():
     sensor = ElectricityNetCostSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -1290,7 +1290,7 @@ def test_electricityNetCost_importMissing_setsUnavailable():
     sensor = ElectricityNetCostSensor(hass, "entry1", _make_device_info())
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_electricity._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -1333,7 +1333,7 @@ def test_supplierImportPrice_allAvailable_computesCorrectPrice():
     sensor = _make_supplier_sensor(hass)
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_supplier._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -1353,7 +1353,7 @@ def test_supplierImportPrice_storeAbsent_setsUnavailable():
     sensor = _make_supplier_sensor(hass)
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_supplier._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -1374,7 +1374,7 @@ def test_supplierImportPrice_monthlyAverageRlpNone_setsUnavailable():
     sensor = _make_supplier_sensor(hass)
 
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_supplier._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()
@@ -1395,7 +1395,7 @@ def test_supplierImportPrice_monthlyAverageRlpNone_setsUnavailable():
 
     uid_map = {UID_GAS_PRICE_EUR: "sensor.gas_price_eur"}
     with patch(
-        "custom_components.krowi_energy_management.sensor._resolve_entity_id",
+        "custom_components.krowi_energy_management.sensor_gas._resolve_entity_id",
         side_effect=_resolve_entity_id_factory(uid_map),
     ):
         sensor._update()

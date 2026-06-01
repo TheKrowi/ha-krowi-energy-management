@@ -131,6 +131,7 @@ DEFAULT_GAS_METER_ENTITY = "sensor.gas_meter_consumption"
 # Atrias GCV API
 ATRIAS_GCV_API_URL = "https://api.atrias.be/roots/download/"
 ATRIAS_SUBSCRIPTION_KEY = "41be1fbab53b4a80ba0d17084a338a55"
+CONF_ATRIAS_SUBSCRIPTION_KEY = "atrias_subscription_key"
 
 # Belgian GOS zone options (alphabetical, from Atrias GCV files)
 GOS_ZONE_OPTIONS: list[str] = [

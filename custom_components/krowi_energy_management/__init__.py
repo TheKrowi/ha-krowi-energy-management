@@ -12,6 +12,8 @@ from homeassistant.helpers import config_validation as cv, entity_registry as er
 from homeassistant.helpers.issue_registry import IssueSeverity, async_create_issue, async_delete_issue # type: ignore
 
 from .const import (
+    ATRIAS_SUBSCRIPTION_KEY,
+    CONF_ATRIAS_SUBSCRIPTION_KEY,
     CONF_DOMAIN_TYPE,
     CONF_ELECTRICITY_DSO,
     CONF_FX_RATE_ENTITY,
@@ -124,9 +126,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await ttf_store.async_start(hass)
 
         gos_zone = effective.get(CONF_GOS_ZONE, DEFAULT_GOS_ZONE)
+        subscription_key = effective.get(CONF_ATRIAS_SUBSCRIPTION_KEY, ATRIAS_SUBSCRIPTION_KEY)
         gcv_store = GcvStore(gos_zone)
         hass.data.setdefault(DOMAIN, {})["gcv_store"] = gcv_store
-        await gcv_store.async_start(hass)
+        await gcv_store.async_start(hass, subscription_key=subscription_key)
         _async_register_gcv_services(hass)
 
     if entry.data.get(CONF_DOMAIN_TYPE) in (DOMAIN_TYPE_ELECTRICITY, DOMAIN_TYPE_GAS, DOMAIN_TYPE_ELECTRICITY_SUPPLIER):

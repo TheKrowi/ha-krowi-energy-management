@@ -20,6 +20,7 @@ from .const import (
     CONF_ELECTRICITY_IMPORT_T2_METER,
     CONF_ELECTRICITY_IMPORT_T2_PRICE,
     CONF_EXPORT_TEMPLATE,
+    CONF_ATRIAS_SUBSCRIPTION_KEY,
     CONF_GAS_METER_ENTITY,
     CONF_GOS_ZONE,
     CONF_LANGUAGE,
@@ -36,6 +37,7 @@ from .const import (
     DEFAULT_ELECTRICITY_IMPORT_T2_METER,
     DEFAULT_ELECTRICITY_IMPORT_T2_PRICE,
     DEFAULT_EXPORT_TEMPLATE,
+    ATRIAS_SUBSCRIPTION_KEY,
     DEFAULT_GAS_METER_ENTITY,
     DEFAULT_GOS_ZONE,
     DEFAULT_LOW_PRICE_CUTOFF,
@@ -146,6 +148,10 @@ def _gas_options_schema(defaults: dict | None = None) -> vol.Schema:
                 CONF_GAS_METER_ENTITY,
                 default=d.get(CONF_GAS_METER_ENTITY, DEFAULT_GAS_METER_ENTITY),
             ): selector.EntitySelector(),
+            vol.Optional(
+                CONF_ATRIAS_SUBSCRIPTION_KEY,
+                default=d.get(CONF_ATRIAS_SUBSCRIPTION_KEY, ATRIAS_SUBSCRIPTION_KEY),
+            ): str,
         }
     )
 

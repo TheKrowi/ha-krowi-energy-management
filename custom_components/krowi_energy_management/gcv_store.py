@@ -16,7 +16,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send  # type: igno
 from homeassistant.helpers.event import async_call_later, async_track_time_change  # type: ignore
 from homeassistant.helpers.storage import Store  # type: ignore
 
-from .const import ATRIAS_GCV_API_URL, ATRIAS_SUBSCRIPTION_KEY, DOMAIN, SIGNAL_GCV_UPDATE
+from .const import ATRIAS_GCV_API_URL, ATRIAS_SUBSCRIPTION_KEY as _DEFAULT_SUBSCRIPTION_KEY, DOMAIN, SIGNAL_GCV_UPDATE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -102,6 +102,7 @@ class GcvStore:
 
     def __init__(self, zone: str) -> None:
         self._zone = zone
+        self._subscription_key: str = _DEFAULT_SUBSCRIPTION_KEY
         self._hass: HomeAssistant | None = None
         self._gcv: float | None = None
         self._history: dict[str, float] = {}
@@ -132,9 +133,10 @@ class GcvStore:
     # Lifecycle
     # -------------------------------------------------------------------------
 
-    async def async_start(self, hass: HomeAssistant) -> None:
+    async def async_start(self, hass: HomeAssistant, subscription_key: str = _DEFAULT_SUBSCRIPTION_KEY) -> None:
         """Start the store: load history, fill gaps, subscribe to time events."""
         self._hass = hass
+        self._subscription_key = subscription_key
         self._store = Store(hass, _STORAGE_VERSION, _STORAGE_KEY)
 
         # Load persisted history
@@ -216,7 +218,7 @@ class GcvStore:
             f"SectorData%2F02%20Gross%20Calorific%20Values%2F{year}%2F"
             f"GCV{year}{month:02d}.txt"
         )
-        url = f"{ATRIAS_GCV_API_URL}{path}?subscription-key={ATRIAS_SUBSCRIPTION_KEY}"
+        url = f"{ATRIAS_GCV_API_URL}{path}?subscription-key={self._subscription_key}"
 
         session = async_get_clientsession(self._hass)
         _ssl_ctx = _build_atrias_ssl_context()
@@ -369,7 +371,7 @@ class GcvStore:
             f"SectorData%2F02%20Gross%20Calorific%20Values%2F{year}%2F"
             f"GCV{year}{month:02d}.txt"
         )
-        url = f"{ATRIAS_GCV_API_URL}{path}?subscription-key={ATRIAS_SUBSCRIPTION_KEY}"
+        url = f"{ATRIAS_GCV_API_URL}{path}?subscription-key={self._subscription_key}"
         target_month = f"{year}-{month:02d}"
 
         session = async_get_clientsession(self._hass)
