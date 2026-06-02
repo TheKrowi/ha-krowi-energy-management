@@ -62,6 +62,7 @@ UID_GAS_PRICE = "gas_current_price"
 UID_GAS_PRICE_EUR = "gas_current_price_eur"
 UID_GAS_SPOT_TODAY_PRICE = "gas_spot_today_price"
 UID_GAS_SPOT_AVERAGE_PRICE = "gas_spot_average_price"
+UID_GAS_SPOT_MONTH_AVERAGE_PRICE = "gas_spot_month_average_price"
 UID_GAS_CALORIFIC_VALUE = "gas_calorific_value"
 UID_GAS_PRICE_M3 = "gas_current_price_m3"
 UID_GAS_CONSUMPTION_KWH = "gas_consumption_kwh"
@@ -315,6 +316,8 @@ NAMES: dict[tuple[str, str], str] = {
     (UID_GAS_SPOT_TODAY_PRICE, LANG_NL): "Dagprijs (TTF DAM)",
     (UID_GAS_SPOT_AVERAGE_PRICE, LANG_EN): "Monthly average price (TTF DAM)",
     (UID_GAS_SPOT_AVERAGE_PRICE, LANG_NL): "Gemiddelde maandprijs (TTF DAM)",
+    (UID_GAS_SPOT_MONTH_AVERAGE_PRICE, LANG_EN): "Monthly average price MTD (TTF DAM)",
+    (UID_GAS_SPOT_MONTH_AVERAGE_PRICE, LANG_NL): "Maandgemiddelde t/m vandaag (TTF DAM)",
     # Gas GCV and m³ sensor entities
     (UID_GAS_CALORIFIC_VALUE, LANG_EN): "Calorific value",
     (UID_GAS_CALORIFIC_VALUE, LANG_NL): "Calorische waarde",

@@ -79,7 +79,7 @@ _stub(
     utcnow=MagicMock(),
     utc_from_timestamp=MagicMock(),
     parse_datetime=MagicMock(),
-    as_local=MagicMock(),
+    as_local=lambda dt: dt,
     now=lambda: _datetime.now(_timezone.utc),
 )
 _stub(

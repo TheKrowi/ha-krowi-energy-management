@@ -30,6 +30,7 @@ from .const import (
     UID_GAS_PRICE_EUR,
     UID_GAS_PRICE_M3,
     UID_GAS_SPOT_AVERAGE_PRICE,
+    UID_GAS_SPOT_MONTH_AVERAGE_PRICE,
     UID_GAS_SPOT_TODAY_PRICE,
     UID_GAS_SURCHARGE_FORMULA,
     UID_GAS_SURCHARGE_RATE,
@@ -115,11 +116,50 @@ class GasSpotAverageSensor(KrowiSensor):
     @callback
     def _on_update(self) -> None:
         store = self._get_store()
-        if store is None or store.average is None:
+        if store is None or store.rolling_average is None:
             self._attr_native_value = None
             self._attr_available = False
         else:
-            self._attr_native_value = store.average
+            self._attr_native_value = store.rolling_average
+            self._attr_available = True
+        self.async_write_ha_state()
+
+
+class GasSpotMonthAveragePriceSensor(KrowiSensor):
+    """Calendar-month-to-date average TTF DAM price in c€/kWh."""
+
+    _attr_icon = "mdi:currency-eur"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = GAS_UNIT
+    _attr_device_class = None
+
+    def __init__(self, hass, entry_id, device_info, language=LANG_EN):
+        super().__init__(hass, entry_id, device_info)
+        self._attr_unique_id = UID_GAS_SPOT_MONTH_AVERAGE_PRICE
+        self.entity_id = f"sensor.{UID_GAS_SPOT_MONTH_AVERAGE_PRICE}"
+        self._attr_name = NAMES.get(
+            (UID_GAS_SPOT_MONTH_AVERAGE_PRICE, language),
+            NAMES[(UID_GAS_SPOT_MONTH_AVERAGE_PRICE, LANG_EN)],
+        )
+
+    def _get_store(self):
+        return self.hass.data.get(DOMAIN, {}).get("ttf_dam_store")
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._unsub_listeners.append(
+            async_dispatcher_connect(self.hass, SIGNAL_TTF_DAM_UPDATE, self._on_update)
+        )
+        self._on_update()
+
+    @callback
+    def _on_update(self) -> None:
+        store = self._get_store()
+        if store is None or store.month_average is None:
+            self._attr_native_value = None
+            self._attr_available = False
+        else:
+            self._attr_native_value = store.month_average
             self._attr_available = True
         self.async_write_ha_state()
 
@@ -677,6 +717,7 @@ async def async_setup(
     entities = [
         GasSpotTodayPriceSensor(hass, entry_id, device_info, language),
         GasSpotAverageSensor(hass, entry_id, device_info, language),
+        GasSpotMonthAveragePriceSensor(hass, entry_id, device_info, language),
         GasSurchargeSensor(hass, entry_id, GAS_UNIT, device_info, language),
         GasSurchargeFormulaSensor(hass, entry_id, GAS_UNIT, device_info, language),
         GasCurrentPriceSensor(hass, entry_id, device_info, language),

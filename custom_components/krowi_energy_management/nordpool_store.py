@@ -132,10 +132,19 @@ class NordpoolBeStore:
         """Fetch today's 15-min price slots from the Nord Pool API."""
         date_str = dt_utils.now().strftime("%Y-%m-%d")
         slots = await self._async_fetch(date_str)
+        from homeassistant.components import persistent_notification  # noqa: PLC0415
         if slots is not None:
             self._data_today = slots
+            persistent_notification.async_dismiss(self._hass, "krowi_nordpool_fetch_failed")
             _LOGGER.debug(
                 "NordpoolBeStore: fetched %d slots for today (%s)", len(slots), date_str
+            )
+        else:
+            persistent_notification.async_create(
+                self._hass,
+                f"Nord Pool BE price data could not be fetched for today ({date_str}).\n\nElectricity spot price sensors may show stale data.",
+                title="Krowi: Nord Pool fetch failed \u26a0\ufe0f",
+                notification_id="krowi_nordpool_fetch_failed",
             )
 
     async def async_fetch_tomorrow(self) -> None:

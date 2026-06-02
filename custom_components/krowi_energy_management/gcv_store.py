@@ -107,6 +107,7 @@ class GcvStore:
         self._gcv: float | None = None
         self._history: dict[str, float] = {}
         self._data_is_fresh: bool = False
+        self._fetch_error: str | None = None
         self._unsubs: list = []
         self._store: Store | None = None
 
@@ -166,6 +167,7 @@ class GcvStore:
             self._unsubs.append(async_call_later(hass, 60, _startup_retry))
 
         # Dispatch initial state to sensors
+        self._notify_fetch_status()
         async_dispatcher_send(self._hass, SIGNAL_GCV_UPDATE)
 
         # Midnight: check for 1st of month → advance target
@@ -231,6 +233,7 @@ class GcvStore:
                 text = await resp.text(encoding="utf-8-sig")
         except Exception as exc:
             _LOGGER.warning("GcvStore: failed to fetch GCV %d-%02d: %s", year, month, exc)
+            self._fetch_error = str(exc)
             return None
 
         return self._parse_zone_gcv(text, year, month)
@@ -279,7 +282,8 @@ class GcvStore:
             if value is not None:
                 key = self._ym_key(year, month)
                 self._history[key] = value
-                _LOGGER.debug("GcvStore: stored %s = %.4f kWh/m³", key, value)
+                self._fetch_error = None
+                _LOGGER.debug("GcvStore: stored %s = %.4f kWh/m\u00b3", key, value)
 
         self._prune_history()
         await self._save_history()
@@ -313,10 +317,24 @@ class GcvStore:
     # Refresh (fill + update GCV + dispatch)
     # -------------------------------------------------------------------------
 
+    def _notify_fetch_status(self) -> None:
+        """Create or dismiss GCV fetch failure notification."""
+        from homeassistant.components import persistent_notification  # noqa: PLC0415
+        if self._gcv is not None:
+            persistent_notification.async_dismiss(self._hass, "krowi_gcv_fetch_failed")
+        elif self._fetch_error is not None:
+            persistent_notification.async_create(
+                self._hass,
+                f"GCV data could not be fetched: {self._fetch_error}\n\nGas GCV sensor may show stale data.",
+                title="Krowi: GCV fetch failed \u26a0\ufe0f",
+                notification_id="krowi_gcv_fetch_failed",
+            )
+
     async def _do_refresh(self) -> None:
         """Gap-fill history, refresh current GCV, dispatch update signal."""
         await self._fill_missing_history()
         self._refresh_gcv()
+        self._notify_fetch_status()
         async_dispatcher_send(self._hass, SIGNAL_GCV_UPDATE)
 
     # -------------------------------------------------------------------------
