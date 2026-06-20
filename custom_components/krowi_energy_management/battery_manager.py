@@ -155,46 +155,72 @@ class BatteryManager:
         # If neither target is above threshold, neither block fires.
         if charge_target >= threshold:
             # Step 3 — charge block
-            if forcible_charge_number and force_mode_select:
+            if forcible_charge_number:
                 if abs(charge_target - charge_current) >= threshold or current_mode != _MODE_CHARGE:
                     _LOGGER.debug(
                         "Battery %s: setting charge power=%.0f, mode=charge",
                         self._entry_id,
                         charge_target,
                     )
-                    await hass.services.async_call(
-                        "number",
-                        "set_value",
-                        {"entity_id": forcible_charge_number, "value": charge_target},
-                        blocking=False,
-                    )
-                    await hass.services.async_call(
-                        "select",
-                        "select_option",
-                        {"entity_id": force_mode_select, "option": _MODE_CHARGE},
-                        blocking=False,
-                    )
+                    try:
+                        await hass.services.async_call(
+                            "number",
+                            "set_value",
+                            {"entity_id": forcible_charge_number, "value": charge_target},
+                            blocking=True,
+                        )
+                    except Exception as err:  # noqa: BLE001
+                        _LOGGER.warning(
+                            "Battery %s: failed to set charge power: %s",
+                            self._entry_id, err,
+                        )
+                    if force_mode_select:
+                        try:
+                            await hass.services.async_call(
+                                "select",
+                                "select_option",
+                                {"entity_id": force_mode_select, "option": _MODE_CHARGE},
+                                blocking=True,
+                            )
+                        except Exception as err:  # noqa: BLE001
+                            _LOGGER.warning(
+                                "Battery %s: failed to set mode to charge: %s",
+                                self._entry_id, err,
+                            )
         elif discharge_target >= threshold:
             # Step 4 — discharge block
-            if forcible_discharge_number and force_mode_select:
+            if forcible_discharge_number:
                 if abs(discharge_target - discharge_current) >= threshold or current_mode != _MODE_DISCHARGE:
                     _LOGGER.debug(
                         "Battery %s: setting discharge power=%.0f, mode=discharge",
                         self._entry_id,
                         discharge_target,
                     )
-                    await hass.services.async_call(
-                        "number",
-                        "set_value",
-                        {"entity_id": forcible_discharge_number, "value": discharge_target},
-                        blocking=False,
-                    )
-                    await hass.services.async_call(
-                        "select",
-                        "select_option",
-                        {"entity_id": force_mode_select, "option": _MODE_DISCHARGE},
-                        blocking=False,
-                    )
+                    try:
+                        await hass.services.async_call(
+                            "number",
+                            "set_value",
+                            {"entity_id": forcible_discharge_number, "value": discharge_target},
+                            blocking=True,
+                        )
+                    except Exception as err:  # noqa: BLE001
+                        _LOGGER.warning(
+                            "Battery %s: failed to set discharge power: %s",
+                            self._entry_id, err,
+                        )
+                    if force_mode_select:
+                        try:
+                            await hass.services.async_call(
+                                "select",
+                                "select_option",
+                                {"entity_id": force_mode_select, "option": _MODE_DISCHARGE},
+                                blocking=True,
+                            )
+                        except Exception as err:  # noqa: BLE001
+                            _LOGGER.warning(
+                                "Battery %s: failed to set mode to discharge: %s",
+                                self._entry_id, err,
+                            )
 
 
 _LOGGER = logging.getLogger(__name__)
