@@ -5,6 +5,8 @@ import logging
 from datetime import date, datetime, timezone
 from statistics import mean
 
+import aiohttp  # type: ignore
+
 from dateutil.relativedelta import relativedelta # type: ignore
 
 from homeassistant.core import HomeAssistant, callback  # type: ignore
@@ -143,8 +145,9 @@ class TtfDamStore:
         url = (
             f"{_API_URL}?from={from_date}&to={to_date}&market=GAS&granularity=DAY"
         )
+        _timeout = aiohttp.ClientTimeout(total=30)
         try:
-            async with session.get(url) as resp:
+            async with session.get(url, timeout=_timeout) as resp:
                 resp.raise_for_status()
                 data = await resp.json()
         except Exception as exc:

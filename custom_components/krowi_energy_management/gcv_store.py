@@ -8,6 +8,8 @@ import socket
 import ssl
 from datetime import date, datetime
 
+import aiohttp  # type: ignore
+
 from dateutil.relativedelta import relativedelta  # type: ignore
 
 from homeassistant.core import HomeAssistant, callback  # type: ignore
@@ -224,8 +226,9 @@ class GcvStore:
 
         session = async_get_clientsession(self._hass)
         _ssl_ctx = _build_atrias_ssl_context()
+        _timeout = aiohttp.ClientTimeout(total=30)
         try:
-            async with session.get(url, ssl=_ssl_ctx) as resp:
+            async with session.get(url, ssl=_ssl_ctx, timeout=_timeout) as resp:
                 if resp.status == 404:
                     _LOGGER.debug("GcvStore: GCV%d%02d.txt not yet published (404)", year, month)
                     return None
@@ -394,12 +397,13 @@ class GcvStore:
 
         session = async_get_clientsession(self._hass)
         _ssl_ctx = _build_atrias_ssl_context()
+        _timeout = aiohttp.ClientTimeout(total=30)
         http_status: int | None = None
         gcv_value: float | None = None
         error: str | None = None
 
         try:
-            async with session.get(url, ssl=_ssl_ctx) as resp:
+            async with session.get(url, ssl=_ssl_ctx, timeout=_timeout) as resp:
                 http_status = resp.status
                 if resp.status == 404:
                     error = "404 Not Found — file not yet published by Atrias"

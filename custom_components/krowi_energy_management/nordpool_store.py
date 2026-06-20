@@ -6,6 +6,8 @@ from datetime import date, datetime, timedelta
 from statistics import mean
 from typing import TYPE_CHECKING
 
+import aiohttp  # type: ignore
+
 from dateutil.relativedelta import relativedelta # type: ignore
 
 from homeassistant.core import HomeAssistant, callback # type: ignore
@@ -166,8 +168,9 @@ class NordpoolBeStore:
         """Fetch and parse price slots for a given date. Returns None on error."""
         session = async_get_clientsession(self._hass)
         url = f"{_API_URL}?currency=EUR&market=DayAhead&deliveryArea=BE&date={date_str}"
+        _timeout = aiohttp.ClientTimeout(total=30)
         try:
-            async with session.get(url) as resp:
+            async with session.get(url, timeout=_timeout) as resp:
                 resp.raise_for_status()
                 data = await resp.json()
         except Exception as exc:

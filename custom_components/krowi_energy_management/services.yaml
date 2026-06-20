@@ -1,0 +1,66 @@
+gcv_test_connection:
+  name: GCV Test Connection
+  description: Test the TLS connection to the Atrias API (api.atrias.be:443).
+
+gcv_test_fetch:
+  name: GCV Test Fetch
+  description: Fetch GCV data for a specific month from the Atrias API without modifying store state.
+  fields:
+    year:
+      name: Year
+      description: Year to fetch. Defaults to prior month's year.
+      required: false
+      selector:
+        number:
+          min: 2020
+          max: 2040
+          mode: box
+    month:
+      name: Month
+      description: Month to fetch (1–12). Defaults to prior month.
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 12
+          mode: box
+
+gcv_store_state:
+  name: GCV Store State
+  description: Return the current internal state of the GCV store (history, freshness, last error).
+
+rlp_store_state:
+  name: RLP Store State
+  description: Return the current internal state of the Synergrid RLP store.
+
+spp_store_state:
+  name: SPP Store State
+  description: Return the current internal state of the Synergrid SPP store.
+
+rlp_test_fetch:
+  name: RLP Test Fetch
+  description: Fetch RLP profile data for a specific year from Synergrid without modifying store state.
+  fields:
+    year:
+      name: Year
+      description: Year to fetch. Defaults to the current year.
+      required: false
+      selector:
+        number:
+          min: 2020
+          max: 2040
+          mode: box
+
+spp_test_fetch:
+  name: SPP Test Fetch
+  description: Fetch SPP profile data for a specific year from Synergrid without modifying store state.
+  fields:
+    year:
+      name: Year
+      description: Year to fetch. Defaults to the current year.
+      required: false
+      selector:
+        number:
+          min: 2020
+          max: 2040
+          mode: box
