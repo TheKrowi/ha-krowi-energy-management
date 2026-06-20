@@ -97,6 +97,16 @@ class BatteryManager:
         force_mode_select = cfg.get(CONF_BATTERY_FORCE_MODE_SELECT)
         threshold = cfg.get(CONF_BATTERY_THRESHOLD, DEFAULT_BATTERY_THRESHOLD)
 
+        # Guard: PID sensor must be configured (entry needs reconfiguration via Options
+        # if it was set up before the PID sensor field was added)
+        if not pid_sensor:
+            _LOGGER.warning(
+                "Battery %s: PID output sensor is not configured. "
+                "Reconfigure the battery entry via Settings → Devices & Services to set it.",
+                self._entry_id,
+            )
+            return
+
         # Step 1 — ensure control mode switch is on
         if control_switch:
             state = hass.states.get(control_switch)
@@ -127,51 +137,64 @@ class BatteryManager:
         current_mode_state = hass.states.get(force_mode_select)
         current_mode = current_mode_state.state if current_mode_state else ""
 
-        # Step 3 — charge block
-        if forcible_charge_number and force_mode_select:
-            if abs(charge_target - charge_current) >= threshold or (
-                charge_target >= threshold and current_mode != _MODE_CHARGE
-            ):
-                _LOGGER.debug(
-                    "Battery %s: setting charge power=%.0f, mode=charge",
-                    self._entry_id,
-                    charge_target,
-                )
-                await hass.services.async_call(
-                    "number",
-                    "set_value",
-                    {"entity_id": forcible_charge_number, "value": charge_target},
-                    blocking=False,
-                )
-                await hass.services.async_call(
-                    "select",
-                    "select_option",
-                    {"entity_id": force_mode_select, "option": _MODE_CHARGE},
-                    blocking=False,
-                )
+        _LOGGER.debug(
+            "Battery %s tick: pid=%.1f charge_target=%.0f charge_current=%.0f "
+            "discharge_target=%.0f discharge_current=%.0f mode=%s",
+            self._entry_id,
+            pid,
+            charge_target,
+            charge_current,
+            discharge_target,
+            discharge_current,
+            current_mode,
+        )
 
-        # Step 4 — discharge block
-        if forcible_discharge_number and force_mode_select:
-            if abs(discharge_target - discharge_current) >= threshold or (
-                discharge_target >= threshold and current_mode != _MODE_DISCHARGE
-            ):
-                _LOGGER.debug(
-                    "Battery %s: setting discharge power=%.0f, mode=discharge",
-                    self._entry_id,
-                    discharge_target,
-                )
-                await hass.services.async_call(
-                    "number",
-                    "set_value",
-                    {"entity_id": forcible_discharge_number, "value": discharge_target},
-                    blocking=False,
-                )
-                await hass.services.async_call(
-                    "select",
-                    "select_option",
-                    {"entity_id": force_mode_select, "option": _MODE_DISCHARGE},
-                    blocking=False,
-                )
+        # Steps 3 & 4 — charge and discharge blocks are mutually exclusive.
+        # If charge_target >= threshold we are in a charge intent; the discharge
+        # block must not override the mode select in the same tick.
+        # If neither target is above threshold, neither block fires.
+        if charge_target >= threshold:
+            # Step 3 — charge block
+            if forcible_charge_number and force_mode_select:
+                if abs(charge_target - charge_current) >= threshold or current_mode != _MODE_CHARGE:
+                    _LOGGER.debug(
+                        "Battery %s: setting charge power=%.0f, mode=charge",
+                        self._entry_id,
+                        charge_target,
+                    )
+                    await hass.services.async_call(
+                        "number",
+                        "set_value",
+                        {"entity_id": forcible_charge_number, "value": charge_target},
+                        blocking=False,
+                    )
+                    await hass.services.async_call(
+                        "select",
+                        "select_option",
+                        {"entity_id": force_mode_select, "option": _MODE_CHARGE},
+                        blocking=False,
+                    )
+        elif discharge_target >= threshold:
+            # Step 4 — discharge block
+            if forcible_discharge_number and force_mode_select:
+                if abs(discharge_target - discharge_current) >= threshold or current_mode != _MODE_DISCHARGE:
+                    _LOGGER.debug(
+                        "Battery %s: setting discharge power=%.0f, mode=discharge",
+                        self._entry_id,
+                        discharge_target,
+                    )
+                    await hass.services.async_call(
+                        "number",
+                        "set_value",
+                        {"entity_id": forcible_discharge_number, "value": discharge_target},
+                        blocking=False,
+                    )
+                    await hass.services.async_call(
+                        "select",
+                        "select_option",
+                        {"entity_id": force_mode_select, "option": _MODE_DISCHARGE},
+                        blocking=False,
+                    )
 
 
 _LOGGER = logging.getLogger(__name__)
