@@ -116,7 +116,7 @@ _stub(
 )
 _stub("homeassistant.helpers.storage", Store=MagicMock())
 _stub("homeassistant.helpers.config_validation")
-_stub("homeassistant.helpers.entity_registry")
+_stub("homeassistant.helpers.entity_registry", async_get=MagicMock())
 _stub(
     "homeassistant.helpers.issue_registry",
     IssueSeverity=MagicMock(),

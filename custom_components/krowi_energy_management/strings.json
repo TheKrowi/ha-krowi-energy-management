@@ -59,8 +59,7 @@
         "title": "Battery Configuration",
         "data": {
           "battery_control_mode_switch": "Control mode switch",
-          "battery_target_charge_power_sensor": "Target charge power sensor",
-          "battery_target_discharge_power_sensor": "Target discharge power sensor",
+          "battery_pid_output_sensor": "PID output sensor",
           "battery_forcible_charge_power_number": "Forcible charge power (number)",
           "battery_forcible_discharge_power_number": "Forcible discharge power (number)",
           "battery_force_mode_select": "Force mode select",
@@ -68,8 +67,7 @@
         },
         "data_description": {
           "battery_control_mode_switch": "Switch that enables external control of the battery (e.g. Marstek RS485 control mode).",
-          "battery_target_charge_power_sensor": "Sensor providing the desired charge power in W.",
-          "battery_target_discharge_power_sensor": "Sensor providing the desired discharge power in W.",
+          "battery_pid_output_sensor": "Sensor providing the raw PID output (W). Positive = charge intent, negative = discharge intent.",
           "battery_forcible_charge_power_number": "Number entity written with the charge setpoint.",
           "battery_forcible_discharge_power_number": "Number entity written with the discharge setpoint.",
           "battery_force_mode_select": "Select entity that switches between charge / discharge modes.",
@@ -120,8 +118,7 @@
         "title": "Battery Options",
         "data": {
           "battery_control_mode_switch": "Control mode switch",
-          "battery_target_charge_power_sensor": "Target charge power sensor",
-          "battery_target_discharge_power_sensor": "Target discharge power sensor",
+          "battery_pid_output_sensor": "PID output sensor",
           "battery_forcible_charge_power_number": "Forcible charge power (number)",
           "battery_forcible_discharge_power_number": "Forcible discharge power (number)",
           "battery_force_mode_select": "Force mode select",
@@ -129,8 +126,7 @@
         },
         "data_description": {
           "battery_control_mode_switch": "Switch that enables external control of the battery.",
-          "battery_target_charge_power_sensor": "Sensor providing the desired charge power in W.",
-          "battery_target_discharge_power_sensor": "Sensor providing the desired discharge power in W.",
+          "battery_pid_output_sensor": "Sensor providing the raw PID output (W).",
           "battery_forcible_charge_power_number": "Number entity written with the charge setpoint.",
           "battery_forcible_discharge_power_number": "Number entity written with the discharge setpoint.",
           "battery_force_mode_select": "Select entity that switches between charge / discharge modes.",

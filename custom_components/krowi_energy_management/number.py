@@ -12,12 +12,15 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback # type: ig
 from .const import (
     CONF_DOMAIN_TYPE,
     DOMAIN,
+    DOMAIN_TYPE_BATTERY,
     DOMAIN_TYPE_ELECTRICITY,
     DOMAIN_TYPE_GAS,
     GAS_UNIT,
     LANG_EN,
     NAMES,
     UNIT_ELECTRICITY,
+    UID_BATTERY_CHARGE_OFFSET,
+    UID_BATTERY_DISCHARGE_OFFSET,
     UID_ELECTRICITY_DISTRIBUTION_TRANSPORT,
     UID_ELECTRICITY_ENERGY_CONTRIBUTION,
     UID_ELECTRICITY_EXCISE_DUTY,
@@ -58,6 +61,12 @@ _GAS_DESCRIPTORS: list[_NumberDescriptor] = [
     _NumberDescriptor(UID_GAS_VAT, "%", 0, 100, 0.01, icon="mdi:percent"),
 ]
 
+# Battery offset numbers — always in Watts, signed (negative offset is valid)
+_BATTERY_DESCRIPTORS: list[_NumberDescriptor] = [
+    _NumberDescriptor(UID_BATTERY_CHARGE_OFFSET, "W", -9999, 9999, 1, icon="mdi:battery-plus"),
+    _NumberDescriptor(UID_BATTERY_DISCHARGE_OFFSET, "W", -9999, 9999, 1, icon="mdi:battery-minus"),
+]
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -78,6 +87,24 @@ async def async_setup_entry(
         descriptors = _GAS_DESCRIPTORS
         device_suffix = "gas"
         device_name = "Gas"
+    elif domain_type == DOMAIN_TYPE_BATTERY:
+        device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry.entry_id)},
+            name=entry.title,
+        )
+        entities = [
+            KrowiNumberEntity(
+                entry_id=entry.entry_id,
+                descriptor=desc,
+                unit=desc.unit,
+                device_info=device_info,
+                language=language,
+                prefix_entry_id=True,
+            )
+            for desc in _BATTERY_DESCRIPTORS
+        ]
+        async_add_entities(entities)
+        return
     else:
         return
 
@@ -112,10 +139,15 @@ class KrowiNumberEntity(RestoreNumber, NumberEntity):
         unit: str,
         device_info: DeviceInfo,
         language: str = LANG_EN,
+        prefix_entry_id: bool = False,
     ) -> None:
-        self._attr_unique_id = descriptor.unique_id_suffix
-        self.entity_id = f"number.{descriptor.unique_id_suffix}"
-        self._attr_name = NAMES.get((descriptor.unique_id_suffix, language), NAMES[(descriptor.unique_id_suffix, LANG_EN)])
+        suffix = descriptor.unique_id_suffix
+        if prefix_entry_id:
+            self._attr_unique_id = f"{entry_id}_{suffix}"
+        else:
+            self._attr_unique_id = suffix
+            self.entity_id = f"number.{suffix}"
+        self._attr_name = NAMES.get((suffix, language), NAMES[(suffix, LANG_EN)])
         self._attr_icon = descriptor.icon
         self._attr_native_unit_of_measurement = unit
         self._attr_native_min_value = descriptor.min_value

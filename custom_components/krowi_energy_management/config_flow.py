@@ -15,8 +15,7 @@ from .const import (
     CONF_BATTERY_FORCE_MODE_SELECT,
     CONF_BATTERY_FORCIBLE_CHARGE_POWER_NUMBER,
     CONF_BATTERY_FORCIBLE_DISCHARGE_POWER_NUMBER,
-    CONF_BATTERY_TARGET_CHARGE_POWER_SENSOR,
-    CONF_BATTERY_TARGET_DISCHARGE_POWER_SENSOR,
+    CONF_BATTERY_PID_OUTPUT_SENSOR,
     CONF_BATTERY_THRESHOLD,
     CONF_DOMAIN_TYPE,
     CONF_ELECTRICITY_DSO,
@@ -180,14 +179,8 @@ def _battery_schema(defaults: dict | None = None) -> vol.Schema:
                 selector.EntitySelectorConfig(domain="switch")
             ),
             vol.Required(
-                CONF_BATTERY_TARGET_CHARGE_POWER_SENSOR,
-                default=d.get(CONF_BATTERY_TARGET_CHARGE_POWER_SENSOR, ""),
-            ): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor")
-            ),
-            vol.Required(
-                CONF_BATTERY_TARGET_DISCHARGE_POWER_SENSOR,
-                default=d.get(CONF_BATTERY_TARGET_DISCHARGE_POWER_SENSOR, ""),
+                CONF_BATTERY_PID_OUTPUT_SENSOR,
+                default=d.get(CONF_BATTERY_PID_OUTPUT_SENSOR, ""),
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             ),

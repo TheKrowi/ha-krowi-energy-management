@@ -208,8 +208,7 @@ DOMAIN_TYPE_SETTINGS = "settings"
 # Battery domain type and config keys
 DOMAIN_TYPE_BATTERY = "battery"
 CONF_BATTERY_CONTROL_MODE_SWITCH = "battery_control_mode_switch"
-CONF_BATTERY_TARGET_CHARGE_POWER_SENSOR = "battery_target_charge_power_sensor"
-CONF_BATTERY_TARGET_DISCHARGE_POWER_SENSOR = "battery_target_discharge_power_sensor"
+CONF_BATTERY_PID_OUTPUT_SENSOR = "battery_pid_output_sensor"
 CONF_BATTERY_FORCIBLE_CHARGE_POWER_NUMBER = "battery_forcible_charge_power_number"
 CONF_BATTERY_FORCIBLE_DISCHARGE_POWER_NUMBER = "battery_forcible_discharge_power_number"
 CONF_BATTERY_FORCE_MODE_SELECT = "battery_force_mode_select"
@@ -218,7 +217,10 @@ DEFAULT_BATTERY_THRESHOLD = 10.0
 
 # Unique ID suffixes — battery entities
 UID_BATTERY_MANAGEMENT_ENABLED = "battery_management_enabled"
-UID_BATTERY_MANAGEMENT_MODE = "battery_management_mode"
+UID_BATTERY_CHARGE_OFFSET = "battery_charge_power_offset"
+UID_BATTERY_DISCHARGE_OFFSET = "battery_discharge_power_offset"
+UID_BATTERY_TARGET_CHARGE_POWER = "battery_target_charge_power"
+UID_BATTERY_TARGET_DISCHARGE_POWER = "battery_target_discharge_power"
 
 # Electricity supplier domain type and config keys
 DOMAIN_TYPE_ELECTRICITY_SUPPLIER = "electricity_supplier"
@@ -354,6 +356,12 @@ NAMES: dict[tuple[str, str], str] = {
     # Battery entities
     (UID_BATTERY_MANAGEMENT_ENABLED, LANG_EN): "Battery management enabled",
     (UID_BATTERY_MANAGEMENT_ENABLED, LANG_NL): "Batterijbeheer ingeschakeld",
-    (UID_BATTERY_MANAGEMENT_MODE, LANG_EN): "Battery management mode",
-    (UID_BATTERY_MANAGEMENT_MODE, LANG_NL): "Batterijbeheer modus",
+    (UID_BATTERY_CHARGE_OFFSET, LANG_EN): "Charge power offset",
+    (UID_BATTERY_CHARGE_OFFSET, LANG_NL): "Laadvermogen offset",
+    (UID_BATTERY_DISCHARGE_OFFSET, LANG_EN): "Discharge power offset",
+    (UID_BATTERY_DISCHARGE_OFFSET, LANG_NL): "Ontlaadvermogen offset",
+    (UID_BATTERY_TARGET_CHARGE_POWER, LANG_EN): "Target charge power",
+    (UID_BATTERY_TARGET_CHARGE_POWER, LANG_NL): "Doellaadvermogen",
+    (UID_BATTERY_TARGET_DISCHARGE_POWER, LANG_EN): "Target discharge power",
+    (UID_BATTERY_TARGET_DISCHARGE_POWER, LANG_NL): "Doel ontlaadvermogen",
 }
