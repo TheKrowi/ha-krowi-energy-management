@@ -9,6 +9,15 @@ from homeassistant.core import callback # type: ignore
 from homeassistant.helpers import entity_registry as er, selector # type: ignore
 
 from .const import (
+    ATRIAS_SUBSCRIPTION_KEY,
+    CONF_ATRIAS_SUBSCRIPTION_KEY,
+    CONF_BATTERY_CONTROL_MODE_SWITCH,
+    CONF_BATTERY_FORCE_MODE_SELECT,
+    CONF_BATTERY_FORCIBLE_CHARGE_POWER_NUMBER,
+    CONF_BATTERY_FORCIBLE_DISCHARGE_POWER_NUMBER,
+    CONF_BATTERY_TARGET_CHARGE_POWER_SENSOR,
+    CONF_BATTERY_TARGET_DISCHARGE_POWER_SENSOR,
+    CONF_BATTERY_THRESHOLD,
     CONF_DOMAIN_TYPE,
     CONF_ELECTRICITY_DSO,
     CONF_ELECTRICITY_EXPORT_T1_METER,
@@ -20,13 +29,13 @@ from .const import (
     CONF_ELECTRICITY_IMPORT_T2_METER,
     CONF_ELECTRICITY_IMPORT_T2_PRICE,
     CONF_EXPORT_TEMPLATE,
-    CONF_ATRIAS_SUBSCRIPTION_KEY,
     CONF_GAS_METER_ENTITY,
     CONF_GOS_ZONE,
     CONF_LANGUAGE,
     CONF_LOW_PRICE_CUTOFF,
     CONF_SUPPLIER_LABEL,
     CONF_SUPPLIER_SLUG,
+    DEFAULT_BATTERY_THRESHOLD,
     DEFAULT_ELECTRICITY_DSO,
     DEFAULT_ELECTRICITY_EXPORT_T1_METER,
     DEFAULT_ELECTRICITY_EXPORT_T1_PRICE,
@@ -37,11 +46,11 @@ from .const import (
     DEFAULT_ELECTRICITY_IMPORT_T2_METER,
     DEFAULT_ELECTRICITY_IMPORT_T2_PRICE,
     DEFAULT_EXPORT_TEMPLATE,
-    ATRIAS_SUBSCRIPTION_KEY,
     DEFAULT_GAS_METER_ENTITY,
     DEFAULT_GOS_ZONE,
     DEFAULT_LOW_PRICE_CUTOFF,
     DOMAIN,
+    DOMAIN_TYPE_BATTERY,
     DOMAIN_TYPE_ELECTRICITY,
     DOMAIN_TYPE_ELECTRICITY_SUPPLIER,
     DOMAIN_TYPE_GAS,
@@ -160,6 +169,62 @@ def _gas_schema(defaults: dict | None = None) -> vol.Schema:
     return vol.Schema({})
 
 
+def _battery_schema(defaults: dict | None = None) -> vol.Schema:
+    d = defaults or {}
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_BATTERY_CONTROL_MODE_SWITCH,
+                default=d.get(CONF_BATTERY_CONTROL_MODE_SWITCH, ""),
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="switch")
+            ),
+            vol.Required(
+                CONF_BATTERY_TARGET_CHARGE_POWER_SENSOR,
+                default=d.get(CONF_BATTERY_TARGET_CHARGE_POWER_SENSOR, ""),
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor")
+            ),
+            vol.Required(
+                CONF_BATTERY_TARGET_DISCHARGE_POWER_SENSOR,
+                default=d.get(CONF_BATTERY_TARGET_DISCHARGE_POWER_SENSOR, ""),
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor")
+            ),
+            vol.Required(
+                CONF_BATTERY_FORCIBLE_CHARGE_POWER_NUMBER,
+                default=d.get(CONF_BATTERY_FORCIBLE_CHARGE_POWER_NUMBER, ""),
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="number")
+            ),
+            vol.Required(
+                CONF_BATTERY_FORCIBLE_DISCHARGE_POWER_NUMBER,
+                default=d.get(CONF_BATTERY_FORCIBLE_DISCHARGE_POWER_NUMBER, ""),
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="number")
+            ),
+            vol.Required(
+                CONF_BATTERY_FORCE_MODE_SELECT,
+                default=d.get(CONF_BATTERY_FORCE_MODE_SELECT, ""),
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="select")
+            ),
+            vol.Optional(
+                CONF_BATTERY_THRESHOLD,
+                default=d.get(CONF_BATTERY_THRESHOLD, DEFAULT_BATTERY_THRESHOLD),
+            ): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=9999,
+                    step=1,
+                    unit_of_measurement="W",
+                    mode=selector.NumberSelectorMode.BOX,
+                )
+            ),
+        }
+    )
+
+
 class KrowiEnergyManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for Krowi Energy Management."""
 
@@ -173,7 +238,13 @@ class KrowiEnergyManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Show domain picker menu."""
         return self.async_show_menu(
             step_id="menu",
-            menu_options=[DOMAIN_TYPE_ELECTRICITY, DOMAIN_TYPE_GAS, DOMAIN_TYPE_SETTINGS, DOMAIN_TYPE_ELECTRICITY_SUPPLIER],
+            menu_options=[
+                DOMAIN_TYPE_ELECTRICITY,
+                DOMAIN_TYPE_GAS,
+                DOMAIN_TYPE_BATTERY,
+                DOMAIN_TYPE_SETTINGS,
+                DOMAIN_TYPE_ELECTRICITY_SUPPLIER,
+            ],
         )
 
     async def async_step_electricity(self, user_input=None):
@@ -213,6 +284,25 @@ class KrowiEnergyManagementConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(
             title="Gas",
             data={CONF_DOMAIN_TYPE: DOMAIN_TYPE_GAS},
+        )
+
+    async def async_step_battery(self, user_input=None):
+        """Handle battery domain setup. Multiple entries are allowed."""
+        if user_input is None:
+            return self.async_show_form(
+                step_id=DOMAIN_TYPE_BATTERY,
+                data_schema=_battery_schema(),
+            )
+
+        existing_count = sum(
+            1
+            for e in self._async_current_entries()
+            if e.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_BATTERY
+        )
+        title = f"Battery {existing_count + 1}"
+        return self.async_create_entry(
+            title=title,
+            data={CONF_DOMAIN_TYPE: DOMAIN_TYPE_BATTERY, **user_input},
         )
 
     async def async_step_electricity_supplier(self, user_input=None):
@@ -297,6 +387,8 @@ class KrowiEnergyManagementOptionsFlow(config_entries.OptionsFlow):
             return await self.async_step_settings_options(user_input)
         if domain_type == DOMAIN_TYPE_ELECTRICITY_SUPPLIER:
             return await self.async_step_electricity_supplier_options(user_input)
+        if domain_type == DOMAIN_TYPE_BATTERY:
+            return await self.async_step_battery_options(user_input)
         return await self.async_step_gas_options(user_input)
 
     async def async_step_settings_options(self, user_input=None):
@@ -368,6 +460,18 @@ class KrowiEnergyManagementOptionsFlow(config_entries.OptionsFlow):
             return self.async_show_form(
                 step_id="gas_options",
                 data_schema=_gas_options_schema(current),
+            )
+
+        return self.async_create_entry(title="", data=user_input)
+
+    async def async_step_battery_options(self, user_input=None):
+        """Battery options — entity links and threshold."""
+        current = {**self._entry.data, **self._entry.options}
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id="battery_options",
+                data_schema=_battery_schema(current),
             )
 
         return self.async_create_entry(title="", data=user_input)

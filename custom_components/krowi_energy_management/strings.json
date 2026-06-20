@@ -7,6 +7,7 @@
         "menu_options": {
           "electricity": "Electricity",
           "gas": "Gas",
+          "battery": "Battery",
           "settings": "Settings",
           "electricity_supplier": "Electricity Supplier"
         }
@@ -53,6 +54,27 @@
           "supplier_slug": "Select your electricity supplier.",
           "supplier_label": "Override the display name for this supplier entry. Leave empty to use the default name."
         }
+      },
+      "battery": {
+        "title": "Battery Configuration",
+        "data": {
+          "battery_control_mode_switch": "Control mode switch",
+          "battery_target_charge_power_sensor": "Target charge power sensor",
+          "battery_target_discharge_power_sensor": "Target discharge power sensor",
+          "battery_forcible_charge_power_number": "Forcible charge power (number)",
+          "battery_forcible_discharge_power_number": "Forcible discharge power (number)",
+          "battery_force_mode_select": "Force mode select",
+          "battery_threshold": "Update threshold (W)"
+        },
+        "data_description": {
+          "battery_control_mode_switch": "Switch that enables external control of the battery (e.g. Marstek RS485 control mode).",
+          "battery_target_charge_power_sensor": "Sensor providing the desired charge power in W.",
+          "battery_target_discharge_power_sensor": "Sensor providing the desired discharge power in W.",
+          "battery_forcible_charge_power_number": "Number entity written with the charge setpoint.",
+          "battery_forcible_discharge_power_number": "Number entity written with the discharge setpoint.",
+          "battery_force_mode_select": "Select entity that switches between charge / discharge modes.",
+          "battery_threshold": "Minimum difference (W) between target and current setpoint that triggers an update."
+        }
       }
     },
     "abort": {
@@ -92,6 +114,27 @@
         "data_description": {
           "gos_zone": "Your Belgian gas distribution zone (GOS). Found in Mijn Fluvius under \"Technische gegevens van uw aansluiting\".",
           "gas_meter_entity": "Entity ID of your gas meter (m\u00b3, total increasing). Used to compute gas consumption in kWh."
+        }
+      },
+      "battery_options": {
+        "title": "Battery Options",
+        "data": {
+          "battery_control_mode_switch": "Control mode switch",
+          "battery_target_charge_power_sensor": "Target charge power sensor",
+          "battery_target_discharge_power_sensor": "Target discharge power sensor",
+          "battery_forcible_charge_power_number": "Forcible charge power (number)",
+          "battery_forcible_discharge_power_number": "Forcible discharge power (number)",
+          "battery_force_mode_select": "Force mode select",
+          "battery_threshold": "Update threshold (W)"
+        },
+        "data_description": {
+          "battery_control_mode_switch": "Switch that enables external control of the battery.",
+          "battery_target_charge_power_sensor": "Sensor providing the desired charge power in W.",
+          "battery_target_discharge_power_sensor": "Sensor providing the desired discharge power in W.",
+          "battery_forcible_charge_power_number": "Number entity written with the charge setpoint.",
+          "battery_forcible_discharge_power_number": "Number entity written with the discharge setpoint.",
+          "battery_force_mode_select": "Select entity that switches between charge / discharge modes.",
+          "battery_threshold": "Minimum difference (W) that triggers an update."
         }
       },
       "settings_options": {

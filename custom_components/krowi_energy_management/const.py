@@ -205,6 +205,21 @@ ISSUE_ENTITY_RENAMED = "entity_renamed_{entry_id}"
 # Settings entry domain type
 DOMAIN_TYPE_SETTINGS = "settings"
 
+# Battery domain type and config keys
+DOMAIN_TYPE_BATTERY = "battery"
+CONF_BATTERY_CONTROL_MODE_SWITCH = "battery_control_mode_switch"
+CONF_BATTERY_TARGET_CHARGE_POWER_SENSOR = "battery_target_charge_power_sensor"
+CONF_BATTERY_TARGET_DISCHARGE_POWER_SENSOR = "battery_target_discharge_power_sensor"
+CONF_BATTERY_FORCIBLE_CHARGE_POWER_NUMBER = "battery_forcible_charge_power_number"
+CONF_BATTERY_FORCIBLE_DISCHARGE_POWER_NUMBER = "battery_forcible_discharge_power_number"
+CONF_BATTERY_FORCE_MODE_SELECT = "battery_force_mode_select"
+CONF_BATTERY_THRESHOLD = "battery_threshold"
+DEFAULT_BATTERY_THRESHOLD = 10.0
+
+# Unique ID suffixes — battery entities
+UID_BATTERY_MANAGEMENT_ENABLED = "battery_management_enabled"
+UID_BATTERY_MANAGEMENT_MODE = "battery_management_mode"
+
 # Electricity supplier domain type and config keys
 DOMAIN_TYPE_ELECTRICITY_SUPPLIER = "electricity_supplier"
 CONF_SUPPLIER_SLUG = "supplier_slug"
@@ -336,4 +351,9 @@ NAMES: dict[tuple[str, str], str] = {
     ("electricity_supplier_export_price", LANG_NL): "Exportprijs",
     ("electricity_supplier_export_price_eur", LANG_EN): "Export price (EUR/kWh)",
     ("electricity_supplier_export_price_eur", LANG_NL): "Exportprijs (EUR/kWh)",
+    # Battery entities
+    (UID_BATTERY_MANAGEMENT_ENABLED, LANG_EN): "Battery management enabled",
+    (UID_BATTERY_MANAGEMENT_ENABLED, LANG_NL): "Batterijbeheer ingeschakeld",
+    (UID_BATTERY_MANAGEMENT_MODE, LANG_EN): "Battery management mode",
+    (UID_BATTERY_MANAGEMENT_MODE, LANG_NL): "Batterijbeheer modus",
 }

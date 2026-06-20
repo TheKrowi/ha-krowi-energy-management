@@ -108,6 +108,7 @@ _stub("homeassistant.helpers.aiohttp_client", async_get_clientsession=MagicMock(
 _stub(
     "homeassistant.helpers.event",
     async_track_time_change=MagicMock(),
+    async_track_time_interval=MagicMock(),
     async_call_later=MagicMock(),
     async_track_state_change_event=MagicMock(),
     TrackTemplate=MagicMock(),
@@ -185,6 +186,10 @@ _stub(
     RestoreNumber=type("RestoreNumber", (_Entity,), {}),
 )
 _stub("homeassistant.components.repairs")
+_stub(
+    "homeassistant.components.switch",
+    SwitchEntity=type("SwitchEntity", (_Entity,), {}),
+)
 
 # ---------------------------------------------------------------------------
 # Wire all stubs as attributes on their parent packages.

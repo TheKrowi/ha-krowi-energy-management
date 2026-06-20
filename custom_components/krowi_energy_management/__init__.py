@@ -14,21 +14,31 @@ from homeassistant.helpers.issue_registry import IssueSeverity, async_create_iss
 from .const import (
     ATRIAS_SUBSCRIPTION_KEY,
     CONF_ATRIAS_SUBSCRIPTION_KEY,
+    CONF_BATTERY_CONTROL_MODE_SWITCH,
+    CONF_BATTERY_FORCE_MODE_SELECT,
+    CONF_BATTERY_FORCIBLE_CHARGE_POWER_NUMBER,
+    CONF_BATTERY_FORCIBLE_DISCHARGE_POWER_NUMBER,
+    CONF_BATTERY_TARGET_CHARGE_POWER_SENSOR,
+    CONF_BATTERY_TARGET_DISCHARGE_POWER_SENSOR,
+    CONF_BATTERY_THRESHOLD,
     CONF_DOMAIN_TYPE,
     CONF_ELECTRICITY_DSO,
     CONF_FX_RATE_ENTITY,
     CONF_GAS_METER_ENTITY,
     CONF_GOS_ZONE,
     CONF_LOW_PRICE_CUTOFF,
+    DEFAULT_BATTERY_THRESHOLD,
     DEFAULT_ELECTRICITY_DSO,
     DEFAULT_GAS_METER_ENTITY,
     DEFAULT_GOS_ZONE,
     DEFAULT_LOW_PRICE_CUTOFF,
     DOMAIN,
+    DOMAIN_TYPE_BATTERY,
     DOMAIN_TYPE_ELECTRICITY,
     DOMAIN_TYPE_ELECTRICITY_SUPPLIER,
     DOMAIN_TYPE_GAS,
 )
+from .battery_manager import BatteryManager
 from .nordpool_store import NordpoolBeStore
 from .rlp_store import SynergridRLPStore
 from .spp_store import SynergridSPPStore
@@ -37,7 +47,7 @@ from .gcv_store import GcvStore
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [Platform.NUMBER, Platform.SENSOR]
+PLATFORMS = [Platform.NUMBER, Platform.SENSOR, Platform.SWITCH]
 
 VERSION = 3
 
@@ -132,7 +142,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await gcv_store.async_start(hass, subscription_key=subscription_key)
         _async_register_gcv_services(hass)
 
-    if entry.data.get(CONF_DOMAIN_TYPE) in (DOMAIN_TYPE_ELECTRICITY, DOMAIN_TYPE_GAS, DOMAIN_TYPE_ELECTRICITY_SUPPLIER):
+    # For battery entries, start the battery manager before platform setup
+    if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_BATTERY:
+        effective = {**entry.data, **entry.options}
+        manager_config = {
+            CONF_BATTERY_CONTROL_MODE_SWITCH: effective.get(CONF_BATTERY_CONTROL_MODE_SWITCH),
+            CONF_BATTERY_TARGET_CHARGE_POWER_SENSOR: effective.get(CONF_BATTERY_TARGET_CHARGE_POWER_SENSOR),
+            CONF_BATTERY_TARGET_DISCHARGE_POWER_SENSOR: effective.get(CONF_BATTERY_TARGET_DISCHARGE_POWER_SENSOR),
+            CONF_BATTERY_FORCIBLE_CHARGE_POWER_NUMBER: effective.get(CONF_BATTERY_FORCIBLE_CHARGE_POWER_NUMBER),
+            CONF_BATTERY_FORCIBLE_DISCHARGE_POWER_NUMBER: effective.get(CONF_BATTERY_FORCIBLE_DISCHARGE_POWER_NUMBER),
+            CONF_BATTERY_FORCE_MODE_SELECT: effective.get(CONF_BATTERY_FORCE_MODE_SELECT),
+            CONF_BATTERY_THRESHOLD: effective.get(CONF_BATTERY_THRESHOLD, DEFAULT_BATTERY_THRESHOLD),
+        }
+        manager = BatteryManager(entry.entry_id, manager_config)
+        hass.data.setdefault(DOMAIN, {})[f"battery_manager_{entry.entry_id}"] = manager
+        await manager.async_start(hass)
+
+    if entry.data.get(CONF_DOMAIN_TYPE) in (
+        DOMAIN_TYPE_ELECTRICITY,
+        DOMAIN_TYPE_GAS,
+        DOMAIN_TYPE_ELECTRICITY_SUPPLIER,
+        DOMAIN_TYPE_BATTERY,
+    ):
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
@@ -168,6 +199,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             await gcv_store.async_stop()
         _async_unregister_gcv_services(hass)
 
+    # Stop the battery manager for battery entries
+    if entry.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_BATTERY:
+        manager = hass.data.get(DOMAIN, {}).pop(f"battery_manager_{entry.entry_id}", None)
+        if manager:
+            await manager.async_stop()
+
     # Unsubscribe the entity registry listener
     unsub = hass.data.get(DOMAIN, {}).pop(f"unsub_registry_{entry.entry_id}", None)
     if unsub:
@@ -176,7 +213,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Clear the Repairs issue
     async_delete_issue(hass, DOMAIN, f"entity_renamed_{entry.entry_id}")
 
-    if entry.data.get(CONF_DOMAIN_TYPE) not in (DOMAIN_TYPE_ELECTRICITY, DOMAIN_TYPE_GAS, DOMAIN_TYPE_ELECTRICITY_SUPPLIER):
+    if entry.data.get(CONF_DOMAIN_TYPE) not in (
+        DOMAIN_TYPE_ELECTRICITY,
+        DOMAIN_TYPE_GAS,
+        DOMAIN_TYPE_ELECTRICITY_SUPPLIER,
+        DOMAIN_TYPE_BATTERY,
+    ):
         return True
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
