@@ -8,6 +8,7 @@ from homeassistant.helpers.device_registry import DeviceInfo  # type: ignore
 from homeassistant.helpers.entity_platform import AddEntitiesCallback  # type: ignore
 from homeassistant.helpers.dispatcher import async_dispatcher_connect  # type: ignore
 from homeassistant.helpers.event import async_track_time_change  # type: ignore
+from homeassistant.helpers.restore_state import RestoreEntity  # type: ignore
 
 from .const import (
     CONF_DOMAIN_TYPE,
@@ -377,6 +378,80 @@ class ElectricitySupplierQuarterHourCostSensor(KrowiSensor):
 
 
 # ---------------------------------------------------------------------------
+# Electricity supplier last-completed quarter-hour sensors
+# ---------------------------------------------------------------------------
+
+class ElectricitySupplierLastQuarterHourCostSensor(KrowiSensor, RestoreEntity):
+    """Frozen cost/revenue for the most recently completed 15-minute window.
+
+    Updated once per boundary: captures the live sensor's final value the
+    moment it resets to 0.0, then holds that value until the next boundary.
+    """
+
+    _attr_icon = "mdi:clock-check-outline"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_native_unit_of_measurement = "EUR"
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry_id: str,
+        slug: str,
+        direction: str,
+        tariff: int,
+        live_uid: str,
+        device_info: DeviceInfo,
+        language: str = LANG_EN,
+    ) -> None:
+        super().__init__(hass, entry_id, device_info)
+        self._live_uid = live_uid
+        if direction == "import":
+            uid = f"electricity_{slug}_last_quarter_hour_import_cost_t{tariff}"
+            names_key = f"electricity_supplier_last_qh_import_cost_t{tariff}"
+        else:
+            uid = f"electricity_{slug}_last_quarter_hour_export_revenue_t{tariff}"
+            names_key = f"electricity_supplier_last_qh_export_revenue_t{tariff}"
+        self._attr_unique_id = uid
+        self.entity_id = f"sensor.{uid}"
+        self._attr_name = NAMES.get((names_key, language), NAMES[(names_key, LANG_EN)])
+
+    def _subscribe_listeners(self) -> None:
+        live_id = _resolve_entity_id(self.hass, "sensor", self._live_uid)
+        if live_id:
+            self._track([live_id], self._handle_live_change)
+
+    @callback
+    def _handle_live_change(self, event) -> None:
+        new_state = event.data.get("new_state")
+        old_state = event.data.get("old_state")
+        if new_state is None or old_state is None:
+            return
+        if new_state.state in ("unavailable", "unknown") or old_state.state in ("unavailable", "unknown"):
+            return
+        try:
+            new_val = float(new_state.state)
+            old_val = float(old_state.state)
+        except (ValueError, TypeError):
+            return
+        # The live sensor resets to 0.0 at each boundary — capture the final value
+        if new_val == 0.0 and old_val > 0.0:
+            self._attr_native_value = round(old_val, 5)
+            self._attr_available = True
+            self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        last_state = await self.async_get_last_state()
+        if last_state is not None and last_state.state not in ("unavailable", "unknown", "None", None):
+            try:
+                self._attr_native_value = round(float(last_state.state), 5)
+                self._attr_available = True
+            except (ValueError, TypeError):
+                self._attr_native_value = None
+        await super().async_added_to_hass()
+
+
+# ---------------------------------------------------------------------------
 # Platform setup
 # ---------------------------------------------------------------------------
 
@@ -419,5 +494,9 @@ async def async_setup(
         ElectricitySupplierQuarterHourCostSensor(hass, entry_id, slug, "import", 2, t2_import_meter, device_info, language),
         ElectricitySupplierQuarterHourCostSensor(hass, entry_id, slug, "export", 1, t1_export_meter, device_info, language),
         ElectricitySupplierQuarterHourCostSensor(hass, entry_id, slug, "export", 2, t2_export_meter, device_info, language),
+        ElectricitySupplierLastQuarterHourCostSensor(hass, entry_id, slug, "import", 1, f"electricity_{slug}_quarter_hour_import_cost_t1", device_info, language),
+        ElectricitySupplierLastQuarterHourCostSensor(hass, entry_id, slug, "import", 2, f"electricity_{slug}_quarter_hour_import_cost_t2", device_info, language),
+        ElectricitySupplierLastQuarterHourCostSensor(hass, entry_id, slug, "export", 1, f"electricity_{slug}_quarter_hour_export_revenue_t1", device_info, language),
+        ElectricitySupplierLastQuarterHourCostSensor(hass, entry_id, slug, "export", 2, f"electricity_{slug}_quarter_hour_export_revenue_t2", device_info, language),
     ]
     async_add_entities(entities)

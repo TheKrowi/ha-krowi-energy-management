@@ -236,6 +236,10 @@ UID_ELECTRICITY_SUPPLIER_QH_IMPORT_COST_T1 = "electricity_{slug}_quarter_hour_im
 UID_ELECTRICITY_SUPPLIER_QH_IMPORT_COST_T2 = "electricity_{slug}_quarter_hour_import_cost_t2"
 UID_ELECTRICITY_SUPPLIER_QH_EXPORT_REVENUE_T1 = "electricity_{slug}_quarter_hour_export_revenue_t1"
 UID_ELECTRICITY_SUPPLIER_QH_EXPORT_REVENUE_T2 = "electricity_{slug}_quarter_hour_export_revenue_t2"
+UID_ELECTRICITY_SUPPLIER_LAST_QH_IMPORT_COST_T1 = "electricity_{slug}_last_quarter_hour_import_cost_t1"
+UID_ELECTRICITY_SUPPLIER_LAST_QH_IMPORT_COST_T2 = "electricity_{slug}_last_quarter_hour_import_cost_t2"
+UID_ELECTRICITY_SUPPLIER_LAST_QH_EXPORT_REVENUE_T1 = "electricity_{slug}_last_quarter_hour_export_revenue_t1"
+UID_ELECTRICITY_SUPPLIER_LAST_QH_EXPORT_REVENUE_T2 = "electricity_{slug}_last_quarter_hour_export_revenue_t2"
 
 # Electricity supplier catalog
 ELECTRICITY_SUPPLIER_CATALOG: dict[str, dict] = {
@@ -365,6 +369,14 @@ NAMES: dict[tuple[str, str], str] = {
     ("electricity_supplier_qh_export_revenue_t1", LANG_NL): "Kwartieropbrengst export (tarief 1)",
     ("electricity_supplier_qh_export_revenue_t2", LANG_EN): "Quarter-hour export revenue (tariff 2)",
     ("electricity_supplier_qh_export_revenue_t2", LANG_NL): "Kwartieropbrengst export (tarief 2)",
+    ("electricity_supplier_last_qh_import_cost_t1", LANG_EN): "Last quarter-hour import cost (tariff 1)",
+    ("electricity_supplier_last_qh_import_cost_t1", LANG_NL): "Vorige kwartierkost import (tarief 1)",
+    ("electricity_supplier_last_qh_import_cost_t2", LANG_EN): "Last quarter-hour import cost (tariff 2)",
+    ("electricity_supplier_last_qh_import_cost_t2", LANG_NL): "Vorige kwartierkost import (tarief 2)",
+    ("electricity_supplier_last_qh_export_revenue_t1", LANG_EN): "Last quarter-hour export revenue (tariff 1)",
+    ("electricity_supplier_last_qh_export_revenue_t1", LANG_NL): "Vorige kwartieropbrengst export (tarief 1)",
+    ("electricity_supplier_last_qh_export_revenue_t2", LANG_EN): "Last quarter-hour export revenue (tariff 2)",
+    ("electricity_supplier_last_qh_export_revenue_t2", LANG_NL): "Vorige kwartieropbrengst export (tarief 2)",
     # Battery entities
     (UID_BATTERY_MANAGEMENT_ENABLED, LANG_EN): "Battery management enabled",
     (UID_BATTERY_MANAGEMENT_ENABLED, LANG_NL): "Batterijbeheer ingeschakeld",
