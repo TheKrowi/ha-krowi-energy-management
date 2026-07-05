@@ -1,17 +1,28 @@
 """Electricity-supplier-domain sensor entities for Krowi Energy Management."""
 from __future__ import annotations
 
-from homeassistant.components.sensor import SensorStateClass  # type: ignore
+from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass  # type: ignore
 from homeassistant.config_entries import ConfigEntry  # type: ignore
 from homeassistant.core import HomeAssistant, callback  # type: ignore
 from homeassistant.helpers.device_registry import DeviceInfo  # type: ignore
 from homeassistant.helpers.entity_platform import AddEntitiesCallback  # type: ignore
 from homeassistant.helpers.dispatcher import async_dispatcher_connect  # type: ignore
+from homeassistant.helpers.event import async_track_time_change  # type: ignore
 
 from .const import (
+    CONF_DOMAIN_TYPE,
+    CONF_ELECTRICITY_EXPORT_T1_METER,
+    CONF_ELECTRICITY_EXPORT_T2_METER,
+    CONF_ELECTRICITY_IMPORT_T1_METER,
+    CONF_ELECTRICITY_IMPORT_T2_METER,
     CONF_SUPPLIER_LABEL,
     CONF_SUPPLIER_SLUG,
+    DEFAULT_ELECTRICITY_EXPORT_T1_METER,
+    DEFAULT_ELECTRICITY_EXPORT_T2_METER,
+    DEFAULT_ELECTRICITY_IMPORT_T1_METER,
+    DEFAULT_ELECTRICITY_IMPORT_T2_METER,
     DOMAIN,
+    DOMAIN_TYPE_ELECTRICITY,
     ELECTRICITY_SUPPLIER_CATALOG,
     LANG_EN,
     NAMES,
@@ -237,6 +248,135 @@ class ElectricitySupplierExportPriceEurSensor(KrowiSensor):
 
 
 # ---------------------------------------------------------------------------
+# Electricity supplier quarter-hour cost/revenue sensors
+# ---------------------------------------------------------------------------
+
+class ElectricitySupplierQuarterHourCostSensor(KrowiSensor):
+    """Quarter-hour import cost or export revenue for a supplier (EUR).
+
+    Tracks Δkwh × supplier_price since the last 15-minute boundary.
+    Resets to 0.0 at HH:00, HH:15, HH:30, HH:45.
+    """
+
+    _attr_icon = "mdi:clock-time-four-outline"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_native_unit_of_measurement = "EUR"
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry_id: str,
+        slug: str,
+        direction: str,
+        tariff: int,
+        meter_entity: str,
+        device_info: DeviceInfo,
+        language: str = LANG_EN,
+    ) -> None:
+        super().__init__(hass, entry_id, device_info)
+        self._meter_entity = meter_entity
+        self._price_uid = f"electricity_{slug}_{direction}_price"
+        if direction == "import":
+            uid = f"electricity_{slug}_quarter_hour_import_cost_t{tariff}"
+            names_key = f"electricity_supplier_qh_import_cost_t{tariff}"
+        else:
+            uid = f"electricity_{slug}_quarter_hour_export_revenue_t{tariff}"
+            names_key = f"electricity_supplier_qh_export_revenue_t{tariff}"
+        self._attr_unique_id = uid
+        self.entity_id = f"sensor.{uid}"
+        self._attr_name = NAMES.get((names_key, language), NAMES[(names_key, LANG_EN)])
+        self._window_start_kwh: float | None = None
+        self._last_known_price: float | None = None
+        self._attr_native_value = 0.0
+
+    def _subscribe_listeners(self) -> None:
+        watch = []
+        if self._meter_entity:
+            watch.append(self._meter_entity)
+        price_id = _resolve_entity_id(self.hass, "sensor", self._price_uid)
+        if price_id:
+            watch.append(price_id)
+        if watch:
+            self._track(watch, self._handle_state_change)
+
+    @callback
+    def _handle_state_change(self, event) -> None:
+        self._update()
+
+    @callback
+    def _update(self) -> None:
+        if not self._meter_entity:
+            return
+        meter_state = self.hass.states.get(self._meter_entity)
+        if meter_state is None or meter_state.state in ("unavailable", "unknown"):
+            return
+        try:
+            current_kwh = float(meter_state.state)
+        except (ValueError, TypeError):
+            return
+
+        # Anchor on first reading — show 0 for the rest of this window
+        if self._window_start_kwh is None:
+            self._window_start_kwh = current_kwh
+            self._attr_native_value = 0.0
+            self._attr_available = True
+            self.async_write_ha_state()
+            return
+
+        delta_kwh = current_kwh - self._window_start_kwh
+
+        # Negative delta = meter rollover — re-anchor without changing cost
+        if delta_kwh < 0:
+            self._window_start_kwh = current_kwh
+            self._attr_native_value = 0.0
+            self._attr_available = True
+            self.async_write_ha_state()
+            return
+
+        price_id = _resolve_entity_id(self.hass, "sensor", self._price_uid)
+        price = safe_float_state(self.hass, price_id) if price_id else None
+        if price is not None:
+            self._last_known_price = price
+        elif self._last_known_price is not None:
+            price = self._last_known_price
+        else:
+            return
+
+        # price is in c€/kWh; divide by 100 to get EUR/kWh
+        self._attr_native_value = round(delta_kwh * price / 100, 5)
+        self._attr_available = True
+        self.async_write_ha_state()
+
+    @callback
+    def _on_quarter_boundary(self, now) -> None:
+        """Reset the window anchor at each 15-minute wall-clock boundary."""
+        if not self._meter_entity:
+            return
+        meter_state = self.hass.states.get(self._meter_entity)
+        if meter_state is None or meter_state.state in ("unavailable", "unknown"):
+            return
+        try:
+            current_kwh = float(meter_state.state)
+        except (ValueError, TypeError):
+            return
+        self._window_start_kwh = current_kwh
+        self._attr_native_value = 0.0
+        self._attr_available = True
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        # Store unsubscribe in _unsub_listeners so base class cleanup handles it
+        self._unsub_listeners.append(
+            async_track_time_change(
+                self.hass, self._on_quarter_boundary, minute=[0, 15, 30, 45], second=0
+            )
+        )
+        self._update()
+
+
+# ---------------------------------------------------------------------------
 # Platform setup
 # ---------------------------------------------------------------------------
 
@@ -258,10 +398,26 @@ async def async_setup(
         identifiers={(DOMAIN, f"{entry_id}_{slug}")},
         name=label,
     )
+    # Resolve import/export meter entities from the electricity config entry
+    elec_entry = next(
+        (e for e in hass.config_entries.async_entries(DOMAIN)
+         if e.data.get(CONF_DOMAIN_TYPE) == DOMAIN_TYPE_ELECTRICITY),
+        None,
+    )
+    elec_cfg = {**(elec_entry.data if elec_entry else {}), **(elec_entry.options if elec_entry else {})}
+    t1_import_meter = elec_cfg.get(CONF_ELECTRICITY_IMPORT_T1_METER) or DEFAULT_ELECTRICITY_IMPORT_T1_METER
+    t2_import_meter = elec_cfg.get(CONF_ELECTRICITY_IMPORT_T2_METER) or DEFAULT_ELECTRICITY_IMPORT_T2_METER
+    t1_export_meter = elec_cfg.get(CONF_ELECTRICITY_EXPORT_T1_METER) or DEFAULT_ELECTRICITY_EXPORT_T1_METER
+    t2_export_meter = elec_cfg.get(CONF_ELECTRICITY_EXPORT_T2_METER) or DEFAULT_ELECTRICITY_EXPORT_T2_METER
+
     entities = [
         ElectricitySupplierImportPriceSensor(hass, entry_id, slug, import_params, device_info, language),
         ElectricitySupplierImportPriceEurSensor(hass, entry_id, slug, device_info, language),
         ElectricitySupplierExportPriceSensor(hass, entry_id, slug, export_params, device_info, language),
         ElectricitySupplierExportPriceEurSensor(hass, entry_id, slug, device_info, language),
+        ElectricitySupplierQuarterHourCostSensor(hass, entry_id, slug, "import", 1, t1_import_meter, device_info, language),
+        ElectricitySupplierQuarterHourCostSensor(hass, entry_id, slug, "import", 2, t2_import_meter, device_info, language),
+        ElectricitySupplierQuarterHourCostSensor(hass, entry_id, slug, "export", 1, t1_export_meter, device_info, language),
+        ElectricitySupplierQuarterHourCostSensor(hass, entry_id, slug, "export", 2, t2_export_meter, device_info, language),
     ]
     async_add_entities(entities)

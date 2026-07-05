@@ -232,6 +232,10 @@ UID_ELECTRICITY_SUPPLIER_IMPORT_PRICE = "electricity_{slug}_import_price"
 UID_ELECTRICITY_SUPPLIER_IMPORT_PRICE_EUR = "electricity_{slug}_import_price_eur"
 UID_ELECTRICITY_SUPPLIER_EXPORT_PRICE = "electricity_{slug}_export_price"
 UID_ELECTRICITY_SUPPLIER_EXPORT_PRICE_EUR = "electricity_{slug}_export_price_eur"
+UID_ELECTRICITY_SUPPLIER_QH_IMPORT_COST_T1 = "electricity_{slug}_quarter_hour_import_cost_t1"
+UID_ELECTRICITY_SUPPLIER_QH_IMPORT_COST_T2 = "electricity_{slug}_quarter_hour_import_cost_t2"
+UID_ELECTRICITY_SUPPLIER_QH_EXPORT_REVENUE_T1 = "electricity_{slug}_quarter_hour_export_revenue_t1"
+UID_ELECTRICITY_SUPPLIER_QH_EXPORT_REVENUE_T2 = "electricity_{slug}_quarter_hour_export_revenue_t2"
 
 # Electricity supplier catalog
 ELECTRICITY_SUPPLIER_CATALOG: dict[str, dict] = {
@@ -353,6 +357,14 @@ NAMES: dict[tuple[str, str], str] = {
     ("electricity_supplier_export_price", LANG_NL): "Exportprijs",
     ("electricity_supplier_export_price_eur", LANG_EN): "Export price (EUR/kWh)",
     ("electricity_supplier_export_price_eur", LANG_NL): "Exportprijs (EUR/kWh)",
+    ("electricity_supplier_qh_import_cost_t1", LANG_EN): "Quarter-hour import cost (tariff 1)",
+    ("electricity_supplier_qh_import_cost_t1", LANG_NL): "Kwartierkost import (tarief 1)",
+    ("electricity_supplier_qh_import_cost_t2", LANG_EN): "Quarter-hour import cost (tariff 2)",
+    ("electricity_supplier_qh_import_cost_t2", LANG_NL): "Kwartierkost import (tarief 2)",
+    ("electricity_supplier_qh_export_revenue_t1", LANG_EN): "Quarter-hour export revenue (tariff 1)",
+    ("electricity_supplier_qh_export_revenue_t1", LANG_NL): "Kwartieropbrengst export (tarief 1)",
+    ("electricity_supplier_qh_export_revenue_t2", LANG_EN): "Quarter-hour export revenue (tariff 2)",
+    ("electricity_supplier_qh_export_revenue_t2", LANG_NL): "Kwartieropbrengst export (tarief 2)",
     # Battery entities
     (UID_BATTERY_MANAGEMENT_ENABLED, LANG_EN): "Battery management enabled",
     (UID_BATTERY_MANAGEMENT_ENABLED, LANG_NL): "Batterijbeheer ingeschakeld",
